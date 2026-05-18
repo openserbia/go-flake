@@ -12,7 +12,7 @@ jobs:
   update:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Regenerate versions.nix
         run: ./scripts/update-versions.py
