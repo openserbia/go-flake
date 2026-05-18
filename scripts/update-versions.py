@@ -24,7 +24,7 @@ PLATFORMS = [
     ("darwin-arm64", "darwin", "arm64"),
 ]
 
-DEFAULT_MIN_VERSION = "1.24.0"
+DEFAULT_MIN_VERSION = "1.2.2"
 
 
 def parse_version(tag: str) -> tuple[int, int, int] | None:
