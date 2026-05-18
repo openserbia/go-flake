@@ -80,7 +80,11 @@
           builtins.listToAttrs
             (map (v: { name = attrFor v; value = mkGo v; }) availableVersions);
 
-        latest = lib.last (builtins.sort builtins.lessThan availableVersions);
+        # builtins.compareVersions splits on '.' and compares numerically,
+        # so "1.24.13" > "1.24.9" as expected (string compare would invert it).
+        latest = lib.last (builtins.sort
+          (a: b: builtins.compareVersions a b < 0)
+          availableVersions);
       in
       {
         packages = versionedPackages // {
