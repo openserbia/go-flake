@@ -41,6 +41,14 @@ nix shell github:openserbia/go-flake#golangci-lint
 nix build github:openserbia/go-flake#gofumpt_0_10_0
 ```
 
+### Pointing JetBrains IDEs (GoLand / IntelliJ) at the SDK
+
+The Go package installs under `$out/share/go/` (matching the nixpkgs
+layout), with `$out/bin/{go,gofmt}` as symlinks into it. devbox merges the
+package into its profile, so just point GoLand / IntelliJ's Go SDK at
+`<project>/.devbox/nix/profile/default/share/go` — it has `bin/`, `src/`,
+and `VERSION` at the top level, which is what the IDE validates against.
+
 ### Avoiding GitHub API rate limits
 
 The `github:` URL scheme hits the GitHub API to resolve refs, which has a low

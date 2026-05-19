@@ -121,7 +121,13 @@
           if k == null then []
           else builtins.filter (v: builtins.hasAttr k versions.${v}) (builtins.attrNames versions);
 
-        # mkGo: copy the full Go tree (existing behavior).
+        # mkGo: install the full Go tree under $out/share/go (matching the
+        # nixpkgs layout), then symlink bin/{go,gofmt,...} into $out/bin
+        # so devbox / nix `buildEnv` can put them on PATH without
+        # dragging src/, pkg/, VERSION into the profile root. The
+        # $out/share/go arrangement also lets JetBrains-family IDEs point
+        # GOROOT at .devbox/nix/profile/default/share/go directly — they
+        # validate by looking for bin/, src/, VERSION at that path.
         mkGo = version:
           let
             key = systemKey.go.${system};
@@ -146,8 +152,11 @@
             dontBuild = true;
             installPhase = ''
               runHook preInstall
-              mkdir -p $out
-              cp -r ./* $out/
+              mkdir -p $out/share/go $out/bin
+              cp -r ./* $out/share/go/
+              for b in $out/share/go/bin/*; do
+                ln -s "../share/go/bin/$(basename "$b")" "$out/bin/$(basename "$b")"
+              done
               runHook postInstall
             '';
             meta = with lib; {
