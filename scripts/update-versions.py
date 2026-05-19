@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Fetch upstream Go release metadata from go.dev and regenerate versions.nix.
 
-Reads https://go.dev/dl/?mode=json&include=all, keeps stable releases at or
-above --min-version that publish archive tarballs for all four supported
-(os, arch) pairs, and writes their SHA256 sums into versions.nix.
+Reads https://go.dev/dl/?mode=json&include=all and writes a sparse per-version
+table of SHA256 sums covering every (os, arch) tarball upstream publishes.
+Windows is excluded (no native Nix); known non-OS sentinels are filtered out.
 """
 
 from __future__ import annotations
@@ -16,13 +16,14 @@ from pathlib import Path
 
 GO_DL_JSON = "https://go.dev/dl/?mode=json&include=all"
 
-# (nix attr key, go.dev "os", go.dev "arch")
-PLATFORMS = [
-    ("linux-amd64",  "linux",  "amd64"),
-    ("linux-arm64",  "linux",  "arm64"),
-    ("darwin-amd64", "darwin", "amd64"),
-    ("darwin-arm64", "darwin", "arm64"),
-]
+# OSes for which we mirror archives. Windows is dropped (no native Nix).
+# Anything else upstream may publish (bootstrap, wasm, etc.) is silently
+# filtered out because its f["os"] isn't in this set.
+KNOWN_OSES = {
+    "linux", "darwin",
+    "freebsd", "netbsd", "openbsd", "dragonfly",
+    "illumos", "solaris", "aix", "plan9",
+}
 
 DEFAULT_MIN_VERSION = "1.2.2"
 
@@ -78,29 +79,38 @@ def collect_versions(
         for f in release.get("files", []):
             if f.get("kind") != "archive":
                 continue
-            for nix_key, os_, arch in PLATFORMS:
-                if f.get("os") == os_ and f.get("arch") == arch:
-                    sums[nix_key] = f["sha256"]
-                    break
-        if len(sums) == len(PLATFORMS):
+            os_ = f.get("os")
+            arch = f.get("arch")
+            if os_ not in KNOWN_OSES or not arch:
+                continue
+            # go.dev's JSON omits sha256 for very old releases (pre-1.5-ish)
+            # — skip those entries rather than emitting an empty pin.
+            sha = f.get("sha256")
+            if not sha:
+                continue
+            sums[f"{os_}-{arch}"] = sha
+        if sums:
             out[v] = sums
     return out
 
 
 def render_nix(versions: dict[tuple[int, int, int], dict[str, str]]) -> str:
-    # Align '=' to the widest quoted key (e.g. "darwin-amd64") plus one space.
-    key_field = max(len(k) for k, _, _ in PLATFORMS) + 3  # 2 quotes + 1 trailing space
+    all_keys = {k for sums in versions.values() for k in sums}
+    if not all_keys:
+        return "{\n}\n"
+    # Align '=' to the widest quoted key across the whole file plus one space.
+    key_field = max(len(k) for k in all_keys) + 3  # 2 quotes + 1 trailing space
 
     lines = ["{"]
     for v in sorted(versions):
         ver = ".".join(str(n) for n in v)
         lines.append(f'  "{ver}" = {{')
-        for nix_key, _, _ in PLATFORMS:
-            quoted = f'"{nix_key}"'
-            lines.append(f'    {quoted:<{key_field}}= "{versions[v][nix_key]}";')
+        for key in sorted(versions[v]):
+            quoted = f'"{key}"'
+            lines.append(f'    {quoted:<{key_field}}= "{versions[v][key]}";')
         lines.append("  };")
     lines.append("}")
-    lines.append("")  # trailing newline
+    lines.append("")
     return "\n".join(lines)
 
 

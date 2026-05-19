@@ -1,4 +1,4 @@
-name: Update Go versions
+name: Update versions
 
 on:
   schedule:
@@ -14,17 +14,33 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Regenerate versions.nix
+      - name: Regenerate versions.nix (go)
         run: ./scripts/update-versions.py
+
+      - name: Regenerate golangci-lint-versions.nix
+        run: ./scripts/update-github-tool.py --tool golangci-lint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Regenerate goreleaser-versions.nix
+        run: ./scripts/update-github-tool.py --tool goreleaser
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Regenerate gofumpt-versions.nix
+        run: ./scripts/update-github-tool.py --tool gofumpt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit and push if changed
         run: |
-          if git diff --quiet -- versions.nix; then
-            echo "versions.nix is up to date"
+          files="versions.nix golangci-lint-versions.nix goreleaser-versions.nix gofumpt-versions.nix"
+          if git diff --quiet -- $files; then
+            echo "all version files are up to date"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add versions.nix
-          git commit -m "chore: refresh Go versions from go.dev"
+          git add $files
+          git commit -m "chore: refresh upstream versions"
           git push

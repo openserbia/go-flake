@@ -1,65 +1,129 @@
 # go-flake
 
-Pinned upstream Go releases (from [go.dev](https://go.dev/dl/)) packaged as a Nix flake. Useful when nixpkgs lags behind a Go security patch release and you want to stay on the upstream version without leaving devbox/Nix.
+> Daily-refreshed Nix flake mirroring upstream Go and Go tooling. Use it when
+> nixpkgs lags an upstream security patch or tool release.
 
-The flake fetches the official `tar.gz` binary distribution from `go.dev`, verifies it against the published SHA256, and (on Linux) patches the ELF interpreter so it runs inside Nix builds and on NixOS.
+## At a glance
 
-## Supported platforms
+| Tool                                          | Source                 | Pinning                            | Refresh |
+|-----------------------------------------------|------------------------|------------------------------------|---------|
+| [`go`](https://go.dev)                        | `go.dev/dl/?mode=json` | published SHA256                   | daily   |
+| [`golangci-lint`](https://golangci-lint.run)  | GitHub releases        | per-release `<name>-checksums.txt` | daily   |
+| [`goreleaser`](https://goreleaser.com)        | GitHub releases        | per-release `checksums.txt`        | daily   |
+| [`gofumpt`](https://github.com/mvdan/gofumpt) | GitHub releases        | per-asset API `digest` field       | daily   |
 
-- `x86_64-linux`
-- `aarch64-linux`
-- `x86_64-darwin`
-- `aarch64-darwin`
+Every (os, arch) the upstream actually publishes is mirrored. Per-tool coverage
+is sparse — a tool appears on a system only if its upstream ships a binary for
+that arch.
 
-## Available versions
+## Quick start
 
-See [`versions.nix`](./versions.nix). Each version is exposed as `go_<major>_<minor>_<patch>` (dots replaced with underscores), plus a `default` / `go` alias for the newest entry.
-
-## Usage with devbox
-
-In `devbox.json`:
+### devbox
 
 ```json
 {
   "packages": {
-    "go": "github:openserbia/go-flake#go_1_26_3"
+    "go": "github:openserbia/go-flake#go",
+    "golangci-lint": "github:openserbia/go-flake#golangci-lint",
+    "goreleaser": "github:openserbia/go-flake#goreleaser",
+    "gofumpt": "github:openserbia/go-flake#gofumpt"
   }
 }
 ```
 
-Re-run `devbox shell` (or `devbox install`) and `go version` will report `go1.26.3`.
+Pin a specific version with `_<major>_<minor>_<patch>`, e.g. `#go_1_26_3`.
 
-## Usage with plain Nix
+### plain Nix
 
 ```sh
-nix run github:openserbia/go-flake -- version
-nix shell github:openserbia/go-flake#go_1_26_3
+nix run   github:openserbia/go-flake#go -- version
+nix shell github:openserbia/go-flake#golangci-lint
+nix build github:openserbia/go-flake#gofumpt_0_10_0
 ```
 
-## Adding a new Go release
+### Avoiding GitHub API rate limits
 
-1. Find the SHA256 sums published by go.dev:
-   ```sh
-   curl -fsS 'https://go.dev/dl/?mode=json&include=all' | \
-     python3 -c "
-   import json, sys
-   target = 'go1.26.4'
-   d = json.load(sys.stdin)
-   for r in d:
-     if r['version'] == target:
-       for f in r['files']:
-         if f['kind'] == 'archive' and f['os'] in ('linux','darwin') and f['arch'] in ('amd64','arm64'):
-           print(f\"{f['filename']:40s} sha256={f['sha256']}\")
-       break
-   "
-   ```
-2. Add an entry to [`versions.nix`](./versions.nix) using the four sums.
-3. Open a PR.
+The `github:` URL scheme hits the GitHub API to resolve refs, which has a low
+unauthenticated rate limit. For CI or shared environments that hit it, swap in
+the `tarball+codeload` URL — same content, served via the codeload CDN:
+
+```json
+{
+  "packages": {
+    "go": "tarball+https://codeload.github.com/openserbia/go-flake/tar.gz/main#go_1_26_3"
+  }
+}
+```
+
+## Discover available versions
+
+```sh
+nix flake show github:openserbia/go-flake
+```
+
+Or browse the data files directly:
+
+- [`versions.nix`](./versions.nix) — Go
+- [`golangci-lint-versions.nix`](./golangci-lint-versions.nix)
+- [`goreleaser-versions.nix`](./goreleaser-versions.nix)
+- [`gofumpt-versions.nix`](./gofumpt-versions.nix)
+
+Attribute naming: `<tool>_<major>_<minor>_<patch>` (dots → underscores). The
+bare attribute `<tool>` is an alias for the newest version available on the
+current system. `default` (and `go`) point at the latest Go.
+
+## Platforms
+
+Coverage matches each upstream's published artifacts; the flake exposes a tool
+on a Nix system iff that system maps to a platform key in the data file.
+Currently exposed systems:
+
+| Linux               | Darwin           | FreeBSD          |
+|---------------------|------------------|------------------|
+| `x86_64-linux`      | `x86_64-darwin`  | `x86_64-freebsd` |
+| `aarch64-linux`     | `aarch64-darwin` |                  |
+| `i686-linux`        |                  |                  |
+| `armv6l-linux`      |                  |                  |
+| `armv7l-linux`      |                  |                  |
+| `riscv64-linux`     |                  |                  |
+| `powerpc64le-linux` |                  |                  |
+
+Run `nix flake show` on your system to see which tools and versions resolve.
+
+## How versions are refreshed
+
+A daily self-hosted GitHub Actions workflow
+([`.github/workflows/update-versions.yml`](./.github/workflows/update-versions.yml))
+runs four idempotent updater scripts, then commits any diff straight to `main`:
+
+| Script                                               | Updates                      | Trust source                                    |
+|------------------------------------------------------|------------------------------|-------------------------------------------------|
+| `scripts/update-versions.py`                         | `versions.nix`               | go.dev JSON's `sha256` field                    |
+| `scripts/update-github-tool.py --tool golangci-lint` | `golangci-lint-versions.nix` | per-release `golangci-lint-<ver>-checksums.txt` |
+| `scripts/update-github-tool.py --tool goreleaser`    | `goreleaser-versions.nix`    | per-release `checksums.txt`                     |
+| `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field       |
+
+Each script supports `--check` (exit non-zero if its data file is stale, no
+write) and `--min-version` (lower the floor). gofumpt's floor is fixed at
+`0.9.0` because GitHub only populates asset digests for releases uploaded after
+mid-2024.
+
+Trust chain for each pin: SHA256 is sourced from the channel above, then Nix's
+own `fetchurl` verifies the downloaded archive against that hash at build time.
+There's no intermediate proxy — the URLs point at `go.dev` and
+`github.com/<repo>/releases/download/...` directly.
 
 ## Why this exists
 
-When CVEs land in the Go stdlib (DNS resolver, `net/mail`, HTTP/2, etc.), upstream ships a patch release within days. nixpkgs maintainers usually follow within a week, but in the meantime production builds can be left exposed. This flake is a thin bridge: it mirrors `go.dev` exactly, so a one-line `versions.nix` change is enough to be back on a clean stdlib.
+When CVEs land in the Go stdlib (DNS resolver, `net/mail`, HTTP/2, etc.),
+upstream ships a patch within days. nixpkgs maintainers usually follow within a
+week, but production builds can be left exposed in the interim. The same lag
+hits major tool releases (golangci-lint, gofumpt) and frequently slips on Go
+sub-minor cadence. This flake mirrors upstream exactly, so a one-line data-file
+change is enough to be back on a clean stdlib or a current linter.
 
 ## License
 
-The flake itself is MIT. The Go binary it distributes is upstream Google's, licensed under [BSD-3-Clause](https://go.dev/LICENSE).
+This flake is MIT. Each mirrored binary is licensed by its upstream project
+(Go: [BSD-3-Clause](https://go.dev/LICENSE); golangci-lint: GPL-3.0-or-later;
+goreleaser: MIT; gofumpt: BSD-3-Clause).

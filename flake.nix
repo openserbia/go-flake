@@ -1,5 +1,5 @@
 {
-  description = "Pinned upstream Go releases (from go.dev) as Nix packages";
+  description = "Pinned upstream Go releases and Go tooling (go.dev / GitHub) as Nix packages";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -8,60 +8,148 @@
 
   outputs = { self, nixpkgs, flake-utils }:
     let
-      versions = import ./versions.nix;
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
-      goArchFor = system: {
-        "x86_64-linux"   = "linux-amd64";
-        "aarch64-linux"  = "linux-arm64";
-        "x86_64-darwin"  = "darwin-amd64";
-        "aarch64-darwin" = "darwin-arm64";
-      }.${system};
+      goVersions           = import ./versions.nix;
+      golangciLintVersions = import ./golangci-lint-versions.nix;
+      goreleaserVersions   = import ./goreleaser-versions.nix;
+      gofumptVersions      = import ./gofumpt-versions.nix;
 
-      attrFor = v: "go_${builtins.replaceStrings [ "." ] [ "_" ] v}";
+      # Per-tool: nix `system` -> the upstream platform key in that tool's
+      # data file (e.g. "linux-amd64", "linux-armv7"). Sparse — if a system
+      # isn't in a tool's table, the tool isn't exposed on that system.
+      #
+      # Systems are restricted to ones where `nixpkgs.legacyPackages.<system>`
+      # actually evaluates (excludes e.g. s390x-linux, loongarch64-linux,
+      # aarch64-freebsd — upstreams publish for them but nixpkgs doesn't ship
+      # a stdenv).
+      #
+      # Go's linux ARM is "linux-armv6l" only; armv7l-linux uses that build
+      # too (armv7 is backwards-compatible with armv6). golangci-lint and
+      # goreleaser publish armv6/armv7 separately. gofumpt's "linux-arm" is
+      # semantically ambiguous (no v6/v7 distinction) so we don't map it.
+      systemKey = {
+        go = {
+          "x86_64-linux"      = "linux-amd64";
+          "aarch64-linux"     = "linux-arm64";
+          "i686-linux"        = "linux-386";
+          "armv6l-linux"      = "linux-armv6l";
+          "armv7l-linux"      = "linux-armv6l";
+          "riscv64-linux"     = "linux-riscv64";
+          "powerpc64le-linux" = "linux-ppc64le";
+          "x86_64-darwin"     = "darwin-amd64";
+          "aarch64-darwin"    = "darwin-arm64";
+          "x86_64-freebsd"    = "freebsd-amd64";
+        };
+
+        golangci-lint = {
+          "x86_64-linux"      = "linux-amd64";
+          "aarch64-linux"     = "linux-arm64";
+          "i686-linux"        = "linux-386";
+          "armv6l-linux"      = "linux-armv6";
+          "armv7l-linux"      = "linux-armv7";
+          "riscv64-linux"     = "linux-riscv64";
+          "powerpc64le-linux" = "linux-ppc64le";
+          "x86_64-darwin"     = "darwin-amd64";
+          "aarch64-darwin"    = "darwin-arm64";
+          "x86_64-freebsd"    = "freebsd-amd64";
+        };
+
+        goreleaser = {
+          "x86_64-linux"   = "linux-amd64";
+          "aarch64-linux"  = "linux-arm64";
+          "i686-linux"     = "linux-386";
+          "armv7l-linux"   = "linux-armv7";
+          "riscv64-linux"  = "linux-riscv64";
+          "x86_64-darwin"  = "darwin-amd64";
+          "aarch64-darwin" = "darwin-arm64";
+        };
+
+        gofumpt = {
+          "x86_64-linux"   = "linux-amd64";
+          "aarch64-linux"  = "linux-arm64";
+          "i686-linux"     = "linux-386";
+          "x86_64-darwin"  = "darwin-amd64";
+          "aarch64-darwin" = "darwin-arm64";
+        };
+      };
+
+      # Union of nix systems any tool exposes. The flake evaluates over this set.
+      systems = builtins.attrNames (
+        builtins.foldl' (acc: m: acc // m) {} (builtins.attrValues systemKey)
+      );
+
+      # version "1.26.3" -> "<prefix>_1_26_3"
+      attrFor = prefix: v: "${prefix}_${builtins.replaceStrings [ "." ] [ "_" ] v}";
+
+      # URL builders. Each takes (version, upstreamKey) and returns a URL.
+      goUrl = version: key:
+        "https://go.dev/dl/go${version}.${key}.tar.gz";
+
+      golangciLintUrl = version: key:
+        "https://github.com/golangci/golangci-lint/releases/download/v${version}/golangci-lint-${version}-${key}.tar.gz";
+
+      # goreleaser uses capitalized OS + x86_64/i386 in filenames; convert back.
+      goreleaserUrl = version: key:
+        let
+          parts = builtins.split "-" key;
+          os = builtins.elemAt parts 0;
+          arch = builtins.elemAt parts 2;
+          capOs = (nixpkgs.lib.toUpper (builtins.substring 0 1 os))
+                  + builtins.substring 1 (builtins.stringLength os) os;
+          asset = if arch == "amd64" then "x86_64"
+                  else if arch == "386" then "i386"
+                  else arch;
+        in
+        "https://github.com/goreleaser/goreleaser/releases/download/v${version}/goreleaser_${capOs}_${asset}.tar.gz";
+
+      # gofumpt assets use underscore between os and arch, no extension.
+      gofumptUrl = version: key:
+        "https://github.com/mvdan/gofumpt/releases/download/v${version}/gofumpt_v${version}_${builtins.replaceStrings [ "-" ] [ "_" ] key}";
     in
     flake-utils.lib.eachSystem systems (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
         lib = pkgs.lib;
-        goArch = goArchFor system;
-        isLinux = pkgs.stdenv.isLinux;
+        isLinux = pkgs.stdenv.hostPlatform.isLinux;
 
+        keyOf = tool: systemKey.${tool}.${system} or null;
+
+        sortAsc = vs: builtins.sort (a: b: builtins.compareVersions a b < 0) vs;
+
+        # Versions whose data has a sum for the current system's key.
+        availableFor = versions: tool:
+          let k = keyOf tool; in
+          if k == null then []
+          else builtins.filter (v: builtins.hasAttr k versions.${v}) (builtins.attrNames versions);
+
+        # mkGo: copy the full Go tree (existing behavior).
         mkGo = version:
-          let spec = versions.${version};
+          let
+            key = systemKey.go.${system};
+            spec = goVersions.${version};
           in pkgs.stdenvNoCC.mkDerivation {
             pname = "go";
             inherit version;
             src = pkgs.fetchurl {
-              url = "https://go.dev/dl/go${version}.${goArch}.tar.gz";
-              sha256 = spec.${goArch};
+              url = goUrl version key;
+              sha256 = spec.${key};
             };
-
             nativeBuildInputs = lib.optionals isLinux [ pkgs.autoPatchelfHook ];
             buildInputs = lib.optionals isLinux [
               pkgs.stdenv.cc.cc.lib
               pkgs.glibc
             ];
-
-            # Test-data ELFs under src/debug/elf/testdata reference real-world libs
-            # (e.g. libtiff.so.6) on purpose, to exercise the ELF parser. They
-            # aren't meant to be loaded at runtime, so skip them in auto-patchelf.
+            # Test-data ELFs under src/debug/elf/testdata reference real-world
+            # libs (e.g. libtiff.so.6); they aren't loaded at runtime, so we
+            # skip them in auto-patchelf.
             autoPatchelfIgnoreMissingDeps = [ "libtiff.so.6" ];
-
             dontConfigure = true;
             dontBuild = true;
-
             installPhase = ''
               runHook preInstall
               mkdir -p $out
               cp -r ./* $out/
               runHook postInstall
             '';
-
             meta = with lib; {
               description = "Go ${version} (upstream go.dev binary)";
               homepage = "https://go.dev";
@@ -71,25 +159,120 @@
             };
           };
 
-        availableVersions =
-          builtins.filter
-            (v: builtins.hasAttr goArch versions.${v})
-            (builtins.attrNames versions);
+        # tar.gz tool: extract, find named binary, install to $out/bin/.
+        mkArchivedTool = { pname, version, url, sha256, description, homepage, license }:
+          pkgs.stdenvNoCC.mkDerivation {
+            inherit pname version;
+            src = pkgs.fetchurl { inherit url sha256; };
+            nativeBuildInputs = lib.optionals isLinux [ pkgs.autoPatchelfHook ];
+            buildInputs = lib.optionals isLinux [ pkgs.stdenv.cc.cc.lib ];
+            unpackPhase = ''
+              runHook preUnpack
+              mkdir -p extracted
+              tar -xzf "$src" -C extracted
+              runHook postUnpack
+            '';
+            sourceRoot = "extracted";
+            dontConfigure = true;
+            dontBuild = true;
+            installPhase = ''
+              runHook preInstall
+              bin="$(find . -type f -name '${pname}' -print -quit)"
+              if [ -z "$bin" ]; then
+                echo "error: ${pname} binary not found in archive" >&2
+                exit 1
+              fi
+              install -Dm755 "$bin" "$out/bin/${pname}"
+              runHook postInstall
+            '';
+            meta = {
+              inherit description homepage license;
+              platforms = systems;
+              mainProgram = pname;
+            };
+          };
 
-        versionedPackages =
-          builtins.listToAttrs
-            (map (v: { name = attrFor v; value = mkGo v; }) availableVersions);
+        # Bare-binary tool (e.g. gofumpt): no archive, $src is the binary.
+        mkBareTool = { pname, version, url, sha256, description, homepage, license }:
+          pkgs.stdenvNoCC.mkDerivation {
+            inherit pname version;
+            src = pkgs.fetchurl { inherit url sha256; };
+            nativeBuildInputs = lib.optionals isLinux [ pkgs.autoPatchelfHook ];
+            buildInputs = lib.optionals isLinux [ pkgs.stdenv.cc.cc.lib ];
+            dontUnpack = true;
+            dontConfigure = true;
+            dontBuild = true;
+            installPhase = ''
+              runHook preInstall
+              install -Dm755 "$src" "$out/bin/${pname}"
+              runHook postInstall
+            '';
+            meta = {
+              inherit description homepage license;
+              platforms = systems;
+              mainProgram = pname;
+            };
+          };
 
-        # builtins.compareVersions splits on '.' and compares numerically,
-        # so "1.24.13" > "1.24.9" as expected (string compare would invert it).
-        latest = lib.last (builtins.sort
-          (a: b: builtins.compareVersions a b < 0)
-          availableVersions);
+        mkGolangciLint = version:
+          let k = systemKey.golangci-lint.${system};
+              spec = golangciLintVersions.${version};
+          in mkArchivedTool {
+            pname = "golangci-lint";
+            inherit version;
+            url = golangciLintUrl version k;
+            sha256 = spec.${k};
+            description = "Fast linters runner for Go (upstream binary)";
+            homepage = "https://golangci-lint.run";
+            license = lib.licenses.gpl3Plus;
+          };
+
+        mkGoreleaser = version:
+          let k = systemKey.goreleaser.${system};
+              spec = goreleaserVersions.${version};
+          in mkArchivedTool {
+            pname = "goreleaser";
+            inherit version;
+            url = goreleaserUrl version k;
+            sha256 = spec.${k};
+            description = "Release-automation tool for Go projects (upstream binary)";
+            homepage = "https://goreleaser.com";
+            license = lib.licenses.mit;
+          };
+
+        mkGofumpt = version:
+          let k = systemKey.gofumpt.${system};
+              spec = gofumptVersions.${version};
+          in mkBareTool {
+            pname = "gofumpt";
+            inherit version;
+            url = gofumptUrl version k;
+            sha256 = spec.${k};
+            description = "Stricter gofmt (upstream binary)";
+            homepage = "https://github.com/mvdan/gofumpt";
+            license = lib.licenses.bsd3;
+          };
+
+        # Build one tool's set of packages: versioned attrs + bare alias.
+        toolPackages = { tool, versions, mkDrv }:
+          let
+            avail = availableFor versions tool;
+            sorted = sortAsc avail;
+            versioned = builtins.listToAttrs
+              (map (v: { name = attrFor tool v; value = mkDrv v; }) avail);
+            alias = if avail == [] then {} else { "${tool}" = mkDrv (lib.last sorted); };
+          in versioned // alias;
+
+        goPkgs            = toolPackages { tool = "go"; versions = goVersions; mkDrv = mkGo; };
+        golangciLintPkgs  = toolPackages { tool = "golangci-lint"; versions = golangciLintVersions; mkDrv = mkGolangciLint; };
+        goreleaserPkgs    = toolPackages { tool = "goreleaser"; versions = goreleaserVersions; mkDrv = mkGoreleaser; };
+        gofumptPkgs       = toolPackages { tool = "gofumpt"; versions = gofumptVersions; mkDrv = mkGofumpt; };
+
+        defaultPkg =
+          let avail = availableFor goVersions "go"; in
+          if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
       in
       {
-        packages = versionedPackages // {
-          default = mkGo latest;
-          go = mkGo latest;
-        };
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // defaultPkg;
       });
 }
