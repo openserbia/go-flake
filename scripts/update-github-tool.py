@@ -14,10 +14,13 @@ raising the API quota from 60/hr to 5000/hr.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import re
+import socket
 import sys
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -133,16 +136,51 @@ def _gh_headers() -> dict[str, str]:
     return h
 
 
+# GitHub API responses to this runner intermittently drop mid-body
+# (http.client.IncompleteRead) — large listings like golangci-lint's
+# releases run ~1MB and a single bad TCP segment kills the whole run.
+# Retry GETs on transient network errors and 5xx/429 statuses.
+_RETRY_ATTEMPTS = 4
+_RETRY_BACKOFF = (1, 2, 4)  # seconds before attempts 2, 3, 4
+_RETRY_HTTP_CODES = {429, 500, 502, 503, 504}
+
+
+def _fetch_retry(req: urllib.request.Request, read):
+    last_err: Exception | None = None
+    for attempt in range(_RETRY_ATTEMPTS):
+        if attempt > 0:
+            time.sleep(_RETRY_BACKOFF[attempt - 1])
+            print(
+                f"  retry {attempt}/{_RETRY_ATTEMPTS - 1}: {req.full_url} "
+                f"({type(last_err).__name__}: {last_err})",
+                file=sys.stderr,
+            )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return read(r)
+        except urllib.error.HTTPError as e:
+            if e.code not in _RETRY_HTTP_CODES:
+                raise
+            last_err = e
+        except (
+            http.client.IncompleteRead,
+            socket.timeout,
+            ConnectionError,
+            urllib.error.URLError,
+        ) as e:
+            last_err = e
+    assert last_err is not None
+    raise last_err
+
+
 def fetch_json(url: str) -> object:
     req = urllib.request.Request(url, headers=_gh_headers())
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r)
+    return _fetch_retry(req, json.load)
 
 
 def fetch_text(url: str) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "go-flake-update"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read().decode("utf-8")
+    return _fetch_retry(req, lambda r: r.read().decode("utf-8"))
 
 
 def list_releases(repo: str, max_pages: int = 2) -> list[dict]:
