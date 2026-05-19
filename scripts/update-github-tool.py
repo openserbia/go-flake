@@ -145,19 +145,56 @@ def fetch_text(url: str) -> str:
         return r.read().decode("utf-8")
 
 
-def list_releases(repo: str) -> list[dict]:
+def list_releases(repo: str, max_pages: int = 2) -> list[dict]:
+    # Only scan the latest few pages: combined with per_page=10 that's
+    # ~20 recent releases, which a daily cron will always cover (no tool
+    # publishes that fast). per_page=10 also keeps each chunk small —
+    # goreleaser's full release list at per_page=100 is ~2MB and
+    # intermittently triggers IncompleteRead from GitHub's API.
+    per_page = 10
     out: list[dict] = []
-    page = 1
-    while True:
+    for page in range(1, max_pages + 1):
         chunk = fetch_json(
-            f"https://api.github.com/repos/{repo}/releases?per_page=100&page={page}"
+            f"https://api.github.com/repos/{repo}/releases?per_page={per_page}&page={page}"
         )
         if not isinstance(chunk, list) or not chunk:
             break
         out.extend(chunk)
-        if len(chunk) < 100:
+        if len(chunk) < per_page:
             break
-        page += 1
+    return out
+
+
+# Output-file parser. The data file is the deterministic output of
+# render_nix below, so a simple line scanner is sufficient — no need
+# to pull in a real Nix parser.
+NIX_VERSION_RE = re.compile(r'^\s*"(\d+\.\d+\.\d+)"\s*=\s*\{\s*$')
+NIX_PLATFORM_RE = re.compile(r'^\s*"([^"]+)"\s*=\s*"([0-9a-f]{64})"\s*;\s*$')
+
+
+def parse_existing_nix(text: str) -> dict[tuple[int, int, int], dict[str, str]]:
+    """Recover the {version -> {platform -> sha}} map from a previously
+    written -versions.nix file, so the updater can skip per-release work
+    for versions already on disk."""
+    out: dict[tuple[int, int, int], dict[str, str]] = {}
+    cur_ver: tuple[int, int, int] | None = None
+    cur_map: dict[str, str] = {}
+    for line in text.splitlines():
+        m = NIX_VERSION_RE.match(line)
+        if m:
+            v = parse_version(m.group(1))
+            if v is not None:
+                cur_ver = v
+                cur_map = {}
+            continue
+        if cur_ver is not None and line.strip() == "};":
+            out[cur_ver] = cur_map
+            cur_ver = None
+            cur_map = {}
+            continue
+        m = NIX_PLATFORM_RE.match(line)
+        if m and cur_ver is not None:
+            cur_map[m.group(1)] = m.group(2)
     return out
 
 
@@ -189,16 +226,25 @@ def _extract_platform(cfg: ToolConfig, asset_name: str) -> tuple[str, str] | Non
 
 
 def collect_versions(
-    cfg: ToolConfig, min_version: tuple[int, int, int],
+    cfg: ToolConfig,
+    min_version: tuple[int, int, int],
+    existing: dict[tuple[int, int, int], dict[str, str]],
 ) -> dict[tuple[int, int, int], dict[str, str]]:
-    out: dict[tuple[int, int, int], dict[str, str]] = {}
+    # Start from existing data and only resolve versions that aren't
+    # already on disk. Upstream tools don't republish a tag's binaries
+    # under the same version, so an entry that exists is authoritative.
+    out: dict[tuple[int, int, int], dict[str, str]] = {
+        v: dict(m) for v, m in existing.items() if v >= min_version
+    }
     releases = list_releases(cfg.repo)
-    print(f"  {len(releases)} releases fetched", file=sys.stderr)
+    print(f"  {len(releases)} releases scanned (latest pages)", file=sys.stderr)
     for r in releases:
         if r.get("draft") or r.get("prerelease"):
             continue
         v = parse_version(r.get("tag_name", ""))
         if v is None or v < min_version:
+            continue
+        if v in out:
             continue
         ver_str = ".".join(str(n) for n in v)
 
@@ -277,8 +323,15 @@ def main() -> int:
     assert min_ver is not None
     out_path = Path(args.output) if args.output else repo_root / cfg.output
 
-    print(f"fetching releases for {cfg.repo}", file=sys.stderr)
-    versions = collect_versions(cfg, min_ver)
+    existing = (
+        parse_existing_nix(out_path.read_text()) if out_path.exists() else {}
+    )
+    print(
+        f"fetching releases for {cfg.repo} "
+        f"({len(existing)} versions already on disk)",
+        file=sys.stderr,
+    )
+    versions = collect_versions(cfg, min_ver, existing)
     if not versions:
         print("error: no matching versions found", file=sys.stderr)
         return 1
