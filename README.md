@@ -5,16 +5,20 @@
 
 ## At a glance
 
-| Tool                                          | Source                 | Pinning                            | Refresh |
-|-----------------------------------------------|------------------------|------------------------------------|---------|
-| [`go`](https://go.dev)                        | `go.dev/dl/?mode=json` | published SHA256                   | daily   |
-| [`golangci-lint`](https://golangci-lint.run)  | GitHub releases        | per-release `<name>-checksums.txt` | daily   |
-| [`goreleaser`](https://goreleaser.com)        | GitHub releases        | per-release `checksums.txt`        | daily   |
-| [`gofumpt`](https://github.com/mvdan/gofumpt) | GitHub releases        | per-asset API `digest` field       | daily   |
+| Tool                                                  | Source                 | Pinning                            | Refresh |
+|-------------------------------------------------------|------------------------|------------------------------------|---------|
+| [`go`](https://go.dev)                                | `go.dev/dl/?mode=json` | published SHA256                   | daily   |
+| [`golangci-lint`](https://golangci-lint.run)          | GitHub releases        | per-release `<name>-checksums.txt` | daily   |
+| [`goreleaser`](https://goreleaser.com)                | GitHub releases        | per-release `checksums.txt`        | daily   |
+| [`gofumpt`](https://github.com/mvdan/gofumpt)         | GitHub releases        | per-asset API `digest` field       | daily   |
+| [`govulncheck`](https://golang.org/x/vuln)            | GitHub source tags     | source tarball + vendor SHA256     | daily   |
 
-Every (os, arch) the upstream actually publishes is mirrored. Per-tool coverage
-is sparse — a tool appears on a system only if its upstream ships a binary for
-that arch.
+For the binary mirrors, every (os, arch) the upstream actually publishes is
+mirrored — coverage is sparse per tool, since a tool appears on a system only
+if its upstream ships a binary for that arch. `govulncheck` is the exception:
+it has no upstream binaries (Go's own tooling distributes it via `go install`),
+so the flake builds it from source via `buildGoModule` and exposes it on every
+system the flake spans.
 
 ## Quick start
 
@@ -26,7 +30,8 @@ that arch.
     "go": "github:openserbia/go-flake#go",
     "golangci-lint": "github:openserbia/go-flake#golangci-lint",
     "goreleaser": "github:openserbia/go-flake#goreleaser",
-    "gofumpt": "github:openserbia/go-flake#gofumpt"
+    "gofumpt": "github:openserbia/go-flake#gofumpt",
+    "govulncheck": "github:openserbia/go-flake#govulncheck"
   }
 }
 ```
@@ -75,6 +80,7 @@ Or browse the data files directly:
 - [`golangci-lint-versions.nix`](./golangci-lint-versions.nix)
 - [`goreleaser-versions.nix`](./goreleaser-versions.nix)
 - [`gofumpt-versions.nix`](./gofumpt-versions.nix)
+- [`govulncheck-versions.nix`](./govulncheck-versions.nix)
 
 Attribute naming: `<tool>_<major>_<minor>_<patch>` (dots → underscores). The
 bare attribute `<tool>` is an alias for the newest version available on the
@@ -102,7 +108,7 @@ Run `nix flake show` on your system to see which tools and versions resolve.
 
 A daily self-hosted GitHub Actions workflow
 ([`.github/workflows/update-versions.yml`](./.github/workflows/update-versions.yml))
-runs four idempotent updater scripts, then commits any diff straight to `main`:
+runs five idempotent updater scripts, then commits any diff straight to `main`:
 
 | Script                                               | Updates                      | Trust source                                    |
 |------------------------------------------------------|------------------------------|-------------------------------------------------|
@@ -110,16 +116,20 @@ runs four idempotent updater scripts, then commits any diff straight to `main`:
 | `scripts/update-github-tool.py --tool golangci-lint` | `golangci-lint-versions.nix` | per-release `golangci-lint-<ver>-checksums.txt` |
 | `scripts/update-github-tool.py --tool goreleaser`    | `goreleaser-versions.nix`    | per-release `checksums.txt`                     |
 | `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field       |
+| `scripts/update-govulncheck.py`                      | `govulncheck-versions.nix`   | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 
 Each script supports `--check` (exit non-zero if its data file is stale, no
-write) and `--min-version` (lower the floor). gofumpt's floor is fixed at
-`0.9.0` because GitHub only populates asset digests for releases uploaded after
+write). `update-github-tool.py` and `update-versions.py` also take
+`--min-version` to lower the floor; gofumpt's floor is fixed at `0.9.0`
+because GitHub only populates asset digests for releases uploaded after
 mid-2024.
 
-Trust chain for each pin: SHA256 is sourced from the channel above, then Nix's
-own `fetchurl` verifies the downloaded archive against that hash at build time.
-There's no intermediate proxy — the URLs point at `go.dev` and
-`github.com/<repo>/releases/download/...` directly.
+Trust chain for the binary mirrors: SHA256 comes from the channel above, then
+Nix's own `fetchurl` verifies the downloaded archive against that hash at
+build time — no intermediate proxy, URLs point at `go.dev` and
+`github.com/<repo>/releases/download/...` directly. For `govulncheck` the
+chain is two-step: the source tarball SHA pins the GitHub archive, and the
+vendor hash pins the resolved Go module set against go.sum at build time.
 
 ## Why this exists
 
@@ -134,4 +144,4 @@ change is enough to be back on a clean stdlib or a current linter.
 
 This flake is MIT. Each mirrored binary is licensed by its upstream project
 (Go: [BSD-3-Clause](https://go.dev/LICENSE); golangci-lint: GPL-3.0-or-later;
-goreleaser: MIT; gofumpt: BSD-3-Clause).
+goreleaser: MIT; gofumpt: BSD-3-Clause; govulncheck: BSD-3-Clause).

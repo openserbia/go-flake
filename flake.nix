@@ -12,10 +12,14 @@
       golangciLintVersions = import ./golangci-lint-versions.nix;
       goreleaserVersions   = import ./goreleaser-versions.nix;
       gofumptVersions      = import ./gofumpt-versions.nix;
+      govulncheckVersions  = import ./govulncheck-versions.nix;
 
       # Per-tool: nix `system` -> the upstream platform key in that tool's
       # data file (e.g. "linux-amd64", "linux-armv7"). Sparse — if a system
       # isn't in a tool's table, the tool isn't exposed on that system.
+      # govulncheck is built from source via buildGoModule (upstream ships
+      # no binaries), so it isn't keyed here — it's exposed on every system
+      # the flake evaluates over.
       #
       # Systems are restricted to ones where `nixpkgs.legacyPackages.<system>`
       # actually evaluates (excludes e.g. s390x-linux, loongarch64-linux,
@@ -262,6 +266,35 @@
             license = lib.licenses.bsd3;
           };
 
+        # govulncheck has no upstream binaries — build from source.
+        # buildGoModule pulls Go and the module cache from nixpkgs; the
+        # vendorHash is the FOD hash of the resolved module set and is
+        # specific to that version's go.sum.
+        mkGovulncheck = version:
+          let spec = govulncheckVersions.${version};
+          in pkgs.buildGoModule {
+            pname = "govulncheck";
+            inherit version;
+            src = pkgs.fetchFromGitHub {
+              owner = "golang";
+              repo = "vuln";
+              rev = "v${version}";
+              hash = spec.src;
+            };
+            vendorHash = spec.vendor;
+            subPackages = [ "cmd/govulncheck" ];
+            # The repo's tests reach out to vuln.go.dev and assume an
+            # internet-connected workspace; skip them in the sandbox.
+            doCheck = false;
+            meta = {
+              description = "Reports known vulnerabilities affecting Go code (built from source)";
+              homepage = "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck";
+              license = lib.licenses.bsd3;
+              platforms = systems;
+              mainProgram = "govulncheck";
+            };
+          };
+
         # Build one tool's set of packages: versioned attrs + bare alias.
         toolPackages = { tool, versions, mkDrv }:
           let
@@ -277,11 +310,22 @@
         goreleaserPkgs    = toolPackages { tool = "goreleaser"; versions = goreleaserVersions; mkDrv = mkGoreleaser; };
         gofumptPkgs       = toolPackages { tool = "gofumpt"; versions = gofumptVersions; mkDrv = mkGofumpt; };
 
+        # govulncheck doesn't fit toolPackages — its data file is
+        # `version -> {src, vendor}` (no per-system platform key) and
+        # every version is buildable on every system the flake spans.
+        govulncheckPkgs =
+          let
+            avail = sortAsc (builtins.attrNames govulncheckVersions);
+            versioned = builtins.listToAttrs
+              (map (v: { name = attrFor "govulncheck" v; value = mkGovulncheck v; }) avail);
+            alias = if avail == [] then {} else { govulncheck = mkGovulncheck (lib.last avail); };
+          in versioned // alias;
+
         defaultPkg =
           let avail = availableFor goVersions "go"; in
           if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
       in
       {
-        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // defaultPkg;
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // govulncheckPkgs // defaultPkg;
       });
 }
