@@ -11,7 +11,7 @@
 | [`golangci-lint`](https://golangci-lint.run)          | GitHub releases        | per-release `<name>-checksums.txt` | daily   |
 | [`goreleaser`](https://goreleaser.com)                | GitHub releases        | per-release `checksums.txt`        | daily   |
 | [`gofumpt`](https://github.com/mvdan/gofumpt)         | GitHub releases        | per-asset API `digest` field       | daily   |
-| [`govulncheck`](https://golang.org/x/vuln)            | GitHub source tags     | source tarball + vendor SHA256     | daily   |
+| [`govulncheck`](https://golang.org/x/vuln)            | GitHub git tags        | source tarball + vendor SHA256     | daily   |
 
 For the binary mirrors, every (os, arch) the upstream actually publishes is
 mirrored — coverage is sparse per tool, since a tool appears on a system only

@@ -101,16 +101,22 @@ def fetch_json(url: str) -> object:
     return _fetch_retry(req, json.load)
 
 
-def list_releases(max_pages: int = 2) -> list[dict]:
-    per_page = 10
-    out: list[dict] = []
+def list_tags(max_pages: int = 2) -> list[str]:
+    # golang/vuln stopped publishing GitHub Releases after v1.1.4 — newer
+    # versions exist only as git tags. So we walk /tags (which is the
+    # authoritative version source) rather than /releases.
+    per_page = 30
+    out: list[str] = []
     for page in range(1, max_pages + 1):
         chunk = fetch_json(
-            f"https://api.github.com/repos/{REPO}/releases?per_page={per_page}&page={page}"
+            f"https://api.github.com/repos/{REPO}/tags?per_page={per_page}&page={page}"
         )
         if not isinstance(chunk, list) or not chunk:
             break
-        out.extend(chunk)
+        for t in chunk:
+            name = t.get("name")
+            if isinstance(name, str):
+                out.append(name)
         if len(chunk) < per_page:
             break
     return out
@@ -215,10 +221,8 @@ def collect(
     min_version: tuple[int, int, int],
 ) -> dict[tuple[int, int, int], dict[str, str]]:
     out = {v: dict(m) for v, m in existing.items() if v >= min_version}
-    for r in list_releases():
-        if r.get("draft") or r.get("prerelease"):
-            continue
-        v = parse_version(r.get("tag_name", ""))
+    for tag in list_tags():
+        v = parse_version(tag)
         if v is None or v < min_version or v in out:
             continue
         ver_str = ".".join(str(n) for n in v)
@@ -264,7 +268,7 @@ def main() -> int:
     out_path = Path(args.output) if args.output else repo_root / OUTPUT
     existing = parse_existing(out_path.read_text()) if out_path.exists() else {}
     print(
-        f"fetching releases for {REPO} "
+        f"fetching tags for {REPO} "
         f"({len(existing)} versions already on disk)",
         file=sys.stderr,
     )
