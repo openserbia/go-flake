@@ -11,6 +11,14 @@ permissions:
 jobs:
   update:
     runs-on: self-hosted
+    # update-source-tool.py shells out to `nix-prefetch-url` and `nix build`
+    # when a new upstream version needs hashes resolved. GitHub Actions'
+    # default `bash -e` doesn't source the runner's login profile, so nix
+    # isn't on PATH. A login shell (`bash -el`) sources /etc/profile.d/nix*.sh
+    # and unblocks those calls. No-op for the pure-Python steps.
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v6
 
