@@ -13,13 +13,14 @@
       goreleaserVersions   = import ./goreleaser-versions.nix;
       gofumptVersions      = import ./gofumpt-versions.nix;
       govulncheckVersions  = import ./govulncheck-versions.nix;
+      goplsVersions        = import ./gopls-versions.nix;
 
       # Per-tool: nix `system` -> the upstream platform key in that tool's
       # data file (e.g. "linux-amd64", "linux-armv7"). Sparse — if a system
       # isn't in a tool's table, the tool isn't exposed on that system.
-      # govulncheck is built from source via buildGoModule (upstream ships
-      # no binaries), so it isn't keyed here — it's exposed on every system
-      # the flake evaluates over.
+      # govulncheck and gopls are built from source via buildGoModule
+      # (upstream ships no binaries for either), so they aren't keyed
+      # here — they're exposed on every system the flake evaluates over.
       #
       # Systems are restricted to ones where `nixpkgs.legacyPackages.<system>`
       # actually evaluates (excludes e.g. s390x-linux, loongarch64-linux,
@@ -163,6 +164,13 @@
               done
               runHook postInstall
             '';
+            # buildGoModule reads three top-level attrs off the `go`
+            # derivation: GOOS, GOARCH (module.nix:220) and CGO_ENABLED
+            # (module.nix:225). Inheriting nixpkgs' values gives us the
+            # right per-system defaults without recomputing them. Needed
+            # for any caller that does `buildGoModule.override { go = …; }`
+            # against this derivation (notably mkGopls).
+            passthru = { inherit (pkgs.go) GOOS GOARCH CGO_ENABLED; };
             meta = with lib; {
               description = "Go ${version} (upstream go.dev binary)";
               homepage = "https://go.dev";
@@ -266,6 +274,24 @@
             license = lib.licenses.bsd3;
           };
 
+        # Latest mirrored Go for this system. Used as the toolchain for
+        # source-built tools where pinning to the freshest Go matters
+        # (notably gopls — see mkGopls). Falls back to nixpkgs.go if
+        # this system has no Go entry (shouldn't happen for the systems
+        # the flake exposes, but keeps the eval honest).
+        latestGo =
+          let avail = availableFor goVersions "go"; in
+          if avail == [] then pkgs.go
+          else mkGo (lib.last (sortAsc avail));
+
+        # buildGoModule wired to use this flake's latest Go instead of
+        # nixpkgs's. Match nixpkgs' own choice for gopls (buildGoLatestModule):
+        # gopls misbehaves when compiled with a Go minor older than the
+        # project it's analyzing, so it must track the latest Go release.
+        # Keeping that property holds the flake's "no nixpkgs lag" promise
+        # for the language server too.
+        buildGoLatest = pkgs.buildGoModule.override { go = latestGo; };
+
         # govulncheck has no upstream binaries — build from source.
         # buildGoModule pulls Go and the module cache from nixpkgs; the
         # vendorHash is the FOD hash of the resolved module set and is
@@ -295,6 +321,36 @@
             };
           };
 
+        # gopls is a subdirectory module of golang/tools, so modRoot points
+        # at gopls/ and subPackages = [ "." ] builds that one module. The
+        # tag form `gopls/v<version>` matches GitHub's archive URL too.
+        mkGopls = version:
+          let spec = goplsVersions.${version};
+          in buildGoLatest {
+            pname = "gopls";
+            inherit version;
+            src = pkgs.fetchFromGitHub {
+              owner = "golang";
+              repo = "tools";
+              rev = "gopls/v${version}";
+              hash = spec.src;
+            };
+            modRoot = "gopls";
+            vendorHash = spec.vendor;
+            subPackages = [ "." ];
+            # fetchFromGitHub strips VCS info, so without this gopls
+            # reports `(devel)` instead of its real version at runtime.
+            ldflags = [ "-X main.version=v${version}" ];
+            doCheck = false;
+            meta = {
+              description = "Official language server for Go (built from source against this flake's latest Go)";
+              homepage = "https://pkg.go.dev/golang.org/x/tools/gopls";
+              license = lib.licenses.bsd3;
+              platforms = systems;
+              mainProgram = "gopls";
+            };
+          };
+
         # Build one tool's set of packages: versioned attrs + bare alias.
         toolPackages = { tool, versions, mkDrv }:
           let
@@ -321,11 +377,21 @@
             alias = if avail == [] then {} else { govulncheck = mkGovulncheck (lib.last avail); };
           in versioned // alias;
 
+        # Same shape as govulncheckPkgs — source-built tool with no
+        # per-system platform key, exposed on every system the flake spans.
+        goplsPkgs =
+          let
+            avail = sortAsc (builtins.attrNames goplsVersions);
+            versioned = builtins.listToAttrs
+              (map (v: { name = attrFor "gopls" v; value = mkGopls v; }) avail);
+            alias = if avail == [] then {} else { gopls = mkGopls (lib.last avail); };
+          in versioned // alias;
+
         defaultPkg =
           let avail = availableFor goVersions "go"; in
           if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
       in
       {
-        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // govulncheckPkgs // defaultPkg;
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // govulncheckPkgs // goplsPkgs // defaultPkg;
       });
 }
