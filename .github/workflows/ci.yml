@@ -40,5 +40,11 @@ jobs:
       # eval errors. NOT --all-systems: govulncheck's eval on x86_64-freebsd
       # hits an infinite recursion in upstream buildGoModule (predates
       # this CI; reproduces on 31ea609). Revisit once that's fixed.
+      #
+      # `bash -el` is a login shell so /etc/profile.d/nix*.sh gets sourced
+      # and `nix` lands on PATH — GitHub Actions' default `bash -e` skips
+      # profile loading. The other steps here are pure Python and don't
+      # need this; only the bare `nix` invocation does.
       - name: nix flake check
+        shell: bash -el {0}
         run: nix flake check --no-build --no-warn-dirty
