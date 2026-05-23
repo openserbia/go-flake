@@ -106,9 +106,14 @@ upstream publishes for. The same workflow/README steps apply.
   gopls needs this; delve and staticcheck have their own version-baking
   mechanisms and don't.
 
-- **Idempotency check exists**. `--check` (exit non-zero on diff, no
-  write) is wired up on every updater. CI doesn't currently use it, but
-  it's useful locally before committing.
+- **Two modes for verifying data files**. `--check` fetches upstream
+  (tags/releases) and reports staleness — useful locally before
+  committing if you suspect a fresh release. `--validate` does a pure
+  parse + render round-trip with no network; it's what CI runs to catch
+  hand-edits that break idempotency and parser/renderer regressions.
+  Both are wired into every updater script. The push-time workflow is
+  `.github/workflows/ci.yml`; the daily refresh is
+  `.github/workflows/update-versions.yml`.
 
 - **Mixed-component versions**. `staticcheck` ships both 2-component
   (`2026.1`) and 3-component (`2025.1.1`) releases. The version parser

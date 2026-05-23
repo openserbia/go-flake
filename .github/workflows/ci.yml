@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    # Use the same self-hosted runner as the daily refresh — it already
+    # has Nix configured. Validation is read-only / network-free, so
+    # there's no concern about secrets exposure on fork PRs (none would
+    # run here anyway; self-hosted refuses fork-PR triggers).
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v6
+
+      # Pure round-trip check (parse + render must produce identical
+      # bytes). Catches hand-edits that break idempotency and any
+      # parser/renderer regressions. No network.
+      - name: Validate versions.nix
+        run: ./scripts/update-versions.py --validate
+
+      - name: Validate binary-mirror data files
+        run: |
+          for t in golangci-lint goreleaser gofumpt; do
+            ./scripts/update-github-tool.py --tool "$t" --validate
+          done
+
+      - name: Validate source-built data files
+        run: |
+          for t in govulncheck gopls delve staticcheck; do
+            ./scripts/update-source-tool.py --tool "$t" --validate
+          done
+
+      # Flake eval check on the runner's current system only. Doesn't
+      # build anything (--no-build), just walks every output and surfaces
+      # eval errors. NOT --all-systems: govulncheck's eval on x86_64-freebsd
+      # hits an infinite recursion in upstream buildGoModule (predates
+      # this CI; reproduces on 31ea609). Revisit once that's fixed.
+      - name: nix flake check
+        run: nix flake check --no-build --no-warn-dirty

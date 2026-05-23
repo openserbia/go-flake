@@ -352,7 +352,13 @@ def main() -> int:
     )
     ap.add_argument(
         "--check", action="store_true",
-        help="Exit non-zero if output would differ from existing file (no write)",
+        help="Exit non-zero if output would differ from existing file (no write). "
+             "Hits the GitHub API to discover new releases.",
+    )
+    ap.add_argument(
+        "--validate", action="store_true",
+        help="Exit non-zero if the existing data file isn't round-trip stable "
+             "(parse + render produces different bytes). No network. Use in CI.",
     )
     args = ap.parse_args()
 
@@ -364,6 +370,22 @@ def main() -> int:
     existing = (
         parse_existing_nix(out_path.read_text()) if out_path.exists() else {}
     )
+
+    if args.validate:
+        if not out_path.exists():
+            print(f"{out_path} does not exist", file=sys.stderr)
+            return 1
+        rendered = render_nix(existing)
+        cur = out_path.read_text()
+        if cur != rendered:
+            print(f"{out_path} is not round-trip stable", file=sys.stderr)
+            return 1
+        print(
+            f"{out_path} round-trips cleanly ({len(existing)} versions)",
+            file=sys.stderr,
+        )
+        return 0
+
     print(
         f"fetching releases for {cfg.repo} "
         f"({len(existing)} versions already on disk)",

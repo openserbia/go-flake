@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -94,6 +95,39 @@ def collect_versions(
     return out
 
 
+# Output-file parser. Mirrors update-github-tool.py's NIX_*_RE — same data
+# shape (version -> platform -> sha256-hex). Used by --validate to verify
+# versions.nix round-trips through parse + render without diffs.
+NIX_VERSION_RE = re.compile(r'^\s*"(\d+\.\d+\.\d+)"\s*=\s*\{\s*$')
+NIX_PLATFORM_RE = re.compile(r'^\s*"([^"]+)"\s*=\s*"([0-9a-f]{64})"\s*;\s*$')
+
+
+def parse_existing_nix(text: str) -> dict[tuple[int, int, int], dict[str, str]]:
+    out: dict[tuple[int, int, int], dict[str, str]] = {}
+    cur_ver: tuple[int, int, int] | None = None
+    cur_map: dict[str, str] = {}
+    for line in text.splitlines():
+        m = NIX_VERSION_RE.match(line)
+        if m:
+            parts = m.group(1).split(".")
+            try:
+                v = (int(parts[0]), int(parts[1]), int(parts[2]))
+            except ValueError:
+                continue
+            cur_ver = v
+            cur_map = {}
+            continue
+        if cur_ver is not None and line.strip() == "};":
+            out[cur_ver] = cur_map
+            cur_ver = None
+            cur_map = {}
+            continue
+        m = NIX_PLATFORM_RE.match(line)
+        if m and cur_ver is not None:
+            cur_map[m.group(1)] = m.group(2)
+    return out
+
+
 def render_nix(versions: dict[tuple[int, int, int], dict[str, str]]) -> str:
     all_keys = {k for sums in versions.values() for k in sums}
     if not all_keys:
@@ -131,9 +165,34 @@ def main() -> int:
     ap.add_argument(
         "--check",
         action="store_true",
-        help="Exit non-zero if output would differ from existing file (no write)",
+        help="Exit non-zero if output would differ from existing file (no write). "
+             "Hits go.dev to discover new releases.",
+    )
+    ap.add_argument(
+        "--validate",
+        action="store_true",
+        help="Exit non-zero if the existing data file isn't round-trip stable "
+             "(parse + render produces different bytes). No network. Use in CI.",
     )
     args = ap.parse_args()
+
+    out_path = Path(args.output)
+
+    if args.validate:
+        if not out_path.exists():
+            print(f"{out_path} does not exist", file=sys.stderr)
+            return 1
+        cur = out_path.read_text()
+        existing = parse_existing_nix(cur)
+        rendered = render_nix(existing)
+        if cur != rendered:
+            print(f"{out_path} is not round-trip stable", file=sys.stderr)
+            return 1
+        print(
+            f"{out_path} round-trips cleanly ({len(existing)} versions)",
+            file=sys.stderr,
+        )
+        return 0
 
     print(f"fetching {GO_DL_JSON}", file=sys.stderr)
     releases = fetch_releases(GO_DL_JSON)
@@ -143,7 +202,6 @@ def main() -> int:
         return 1
 
     rendered = render_nix(versions)
-    out_path = Path(args.output)
 
     min_str = ".".join(str(n) for n in args.min_version)
     print(f"collected {len(versions)} versions (>= {min_str})", file=sys.stderr)
