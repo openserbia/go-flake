@@ -47,4 +47,6 @@ jobs:
       # need this; only the bare `nix` invocation does.
       - name: nix flake check
         shell: bash -el {0}
-        run: nix flake check --no-build --no-warn-dirty
+        run: |
+          nix --extra-experimental-features 'nix-command flakes' \
+            flake check --no-build --no-warn-dirty
