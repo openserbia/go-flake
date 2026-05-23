@@ -1,5 +1,7 @@
 # go-flake
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/openserbia/go-flake/badge)](https://scorecard.dev/viewer/?uri=github.com/openserbia/go-flake)
+
 > Daily-refreshed Nix flake mirroring upstream Go and Go tooling. Use it when
 > nixpkgs lags an upstream security patch or tool release.
 
