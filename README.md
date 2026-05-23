@@ -13,17 +13,24 @@
 | [`gofumpt`](https://github.com/mvdan/gofumpt)         | GitHub releases        | per-asset API `digest` field       | daily   |
 | [`govulncheck`](https://golang.org/x/vuln)            | GitHub git tags        | source tarball + vendor SHA256     | daily   |
 | [`gopls`](https://pkg.go.dev/golang.org/x/tools/gopls)| GitHub git tags        | source tarball + vendor SHA256     | daily   |
+| [`delve`](https://github.com/go-delve/delve)          | GitHub git tags        | source tarball (vendored)          | daily   |
+| [`staticcheck`](https://staticcheck.dev)              | GitHub git tags        | source tarball + vendor SHA256     | daily   |
 
 For the binary mirrors, every (os, arch) the upstream actually publishes is
 mirrored — coverage is sparse per tool, since a tool appears on a system only
-if its upstream ships a binary for that arch. `govulncheck` and `gopls` are
-the exceptions: neither ships upstream binaries (Go's own tooling distributes
-them via `go install`), so the flake builds them from source via
-`buildGoModule` and exposes them on every system the flake spans. `gopls`
-in particular is compiled against this flake's *own* latest Go rather than
-nixpkgs' Go — gopls misbehaves when built with a Go minor older than the
-project it's analyzing, so pinning the toolchain is what makes the
-"no nixpkgs lag" guarantee hold for the language server.
+if its upstream ships a binary for that arch. `govulncheck`, `gopls`, `delve`,
+and `staticcheck` are the exceptions: none of them ship upstream binaries for
+Linux/Darwin/FreeBSD that we'd want to mirror, so the flake builds them from
+source via `buildGoModule` and exposes them on every system the flake spans.
+All four are compiled against this flake's *own* latest Go rather than
+nixpkgs' Go — `gopls` and `staticcheck` misbehave when built with a Go minor
+older than the project they're analyzing, and `delve` needs to track Go's
+binary symbol format. Pinning the toolchain to the latest mirrored Go is what
+makes the "no nixpkgs lag" guarantee hold for these tools too.
+
+`delve`'s release tarballs ship a `vendor/` directory, so its data file
+records `vendor = null;` rather than a vendor SRI hash — buildGoModule uses
+the bundled vendor tree directly.
 
 ## Quick start
 
@@ -37,7 +44,9 @@ project it's analyzing, so pinning the toolchain is what makes the
     "goreleaser": "github:openserbia/go-flake#goreleaser",
     "gofumpt": "github:openserbia/go-flake#gofumpt",
     "govulncheck": "github:openserbia/go-flake#govulncheck",
-    "gopls": "github:openserbia/go-flake#gopls"
+    "gopls": "github:openserbia/go-flake#gopls",
+    "delve": "github:openserbia/go-flake#delve",
+    "staticcheck": "github:openserbia/go-flake#staticcheck"
   }
 }
 ```
@@ -88,6 +97,8 @@ Or browse the data files directly:
 - [`gofumpt-versions.nix`](./gofumpt-versions.nix)
 - [`govulncheck-versions.nix`](./govulncheck-versions.nix)
 - [`gopls-versions.nix`](./gopls-versions.nix)
+- [`delve-versions.nix`](./delve-versions.nix)
+- [`staticcheck-versions.nix`](./staticcheck-versions.nix)
 
 Attribute naming: `<tool>_<major>_<minor>_<patch>` (dots → underscores). The
 bare attribute `<tool>` is an alias for the newest version available on the
@@ -125,6 +136,8 @@ runs five idempotent updater scripts, then commits any diff straight to `main`:
 | `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field       |
 | `scripts/update-source-tool.py --tool govulncheck`   | `govulncheck-versions.nix`   | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool gopls`         | `gopls-versions.nix`         | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
+| `scripts/update-source-tool.py --tool delve`         | `delve-versions.nix`         | `nix-prefetch-url --unpack` (vendor=null; bundled vendor/)     |
+| `scripts/update-source-tool.py --tool staticcheck`   | `staticcheck-versions.nix`   | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 
 Each script supports `--check` (exit non-zero if its data file is stale, no
 write). All three updaters accept `--min-version` to lower the floor;

@@ -14,13 +14,16 @@
       gofumptVersions      = import ./gofumpt-versions.nix;
       govulncheckVersions  = import ./govulncheck-versions.nix;
       goplsVersions        = import ./gopls-versions.nix;
+      delveVersions        = import ./delve-versions.nix;
+      staticcheckVersions  = import ./staticcheck-versions.nix;
 
       # Per-tool: nix `system` -> the upstream platform key in that tool's
       # data file (e.g. "linux-amd64", "linux-armv7"). Sparse — if a system
       # isn't in a tool's table, the tool isn't exposed on that system.
-      # govulncheck and gopls are built from source via buildGoModule
-      # (upstream ships no binaries for either), so they aren't keyed
-      # here — they're exposed on every system the flake evaluates over.
+      # govulncheck, gopls, delve, and staticcheck are built from source
+      # via buildGoModule (upstream ships no binaries — or, for delve,
+      # they're macOS-signed pkgs we don't want to mirror), so they aren't
+      # keyed here — they're exposed on every system the flake evaluates over.
       #
       # Systems are restricted to ones where `nixpkgs.legacyPackages.<system>`
       # actually evaluates (excludes e.g. s390x-linux, loongarch64-linux,
@@ -321,6 +324,65 @@
             };
           };
 
+        # delve ships a vendor/ directory in every release tarball, so
+        # vendorHash = null is correct (buildGoModule uses the embedded
+        # vendor/ directly). hardeningDisable disables FORTIFY_SOURCE —
+        # delve's own runtime trips fortify checks when it compiles
+        # throwaway debug helpers; matching nixpkgs' behavior keeps
+        # CGO-based debugging working on hardened systems.
+        mkDelve = version:
+          let spec = delveVersions.${version};
+          in buildGoLatest {
+            pname = "delve";
+            inherit version;
+            src = pkgs.fetchFromGitHub {
+              owner = "go-delve";
+              repo = "delve";
+              rev = "v${version}";
+              hash = spec.src;
+            };
+            vendorHash = spec.vendor;
+            subPackages = [ "cmd/dlv" ];
+            ldflags = [ "-s" "-w" ];
+            hardeningDisable = [ "fortify" ];
+            # delve's tests reach out to local sockets and assume a
+            # connected workspace; skip them in the sandbox.
+            doCheck = false;
+            meta = {
+              description = "Debugger for Go (built from source against this flake's latest Go)";
+              homepage = "https://github.com/go-delve/delve";
+              license = lib.licenses.mit;
+              platforms = systems;
+              mainProgram = "dlv";
+            };
+          };
+
+        # staticcheck is dominikh/go-tools' flagship binary; the repo also
+        # ships a handful of other tools (structcheck, etc.) we don't
+        # expose. subPackages narrows the build to just cmd/staticcheck.
+        mkStaticcheck = version:
+          let spec = staticcheckVersions.${version};
+          in buildGoLatest {
+            pname = "staticcheck";
+            inherit version;
+            src = pkgs.fetchFromGitHub {
+              owner = "dominikh";
+              repo = "go-tools";
+              rev = version;
+              hash = spec.src;
+            };
+            vendorHash = spec.vendor;
+            subPackages = [ "cmd/staticcheck" ];
+            doCheck = false;
+            meta = {
+              description = "Go linter applying advanced static-analysis checks (built from source against this flake's latest Go)";
+              homepage = "https://staticcheck.dev";
+              license = lib.licenses.mit;
+              platforms = systems;
+              mainProgram = "staticcheck";
+            };
+          };
+
         # gopls is a subdirectory module of golang/tools, so modRoot points
         # at gopls/ and subPackages = [ "." ] builds that one module. The
         # tag form `gopls/v<version>` matches GitHub's archive URL too.
@@ -387,11 +449,31 @@
             alias = if avail == [] then {} else { gopls = mkGopls (lib.last avail); };
           in versioned // alias;
 
+        delvePkgs =
+          let
+            avail = sortAsc (builtins.attrNames delveVersions);
+            versioned = builtins.listToAttrs
+              (map (v: { name = attrFor "delve" v; value = mkDelve v; }) avail);
+            alias = if avail == [] then {} else { delve = mkDelve (lib.last avail); };
+          in versioned // alias;
+
+        # staticcheck mixes 2-component (2026.1) and 3-component (2024.1.1)
+        # versions. compareVersions handles both shapes, so the same
+        # alphasort-by-compareVersions used elsewhere picks the right
+        # newest entry for the alias.
+        staticcheckPkgs =
+          let
+            avail = sortAsc (builtins.attrNames staticcheckVersions);
+            versioned = builtins.listToAttrs
+              (map (v: { name = attrFor "staticcheck" v; value = mkStaticcheck v; }) avail);
+            alias = if avail == [] then {} else { staticcheck = mkStaticcheck (lib.last avail); };
+          in versioned // alias;
+
         defaultPkg =
           let avail = availableFor goVersions "go"; in
           if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
       in
       {
-        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // govulncheckPkgs // goplsPkgs // defaultPkg;
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
       });
 }

@@ -42,9 +42,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Regenerate delve-versions.nix
+        run: ./scripts/update-source-tool.py --tool delve
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Regenerate staticcheck-versions.nix
+        run: ./scripts/update-source-tool.py --tool staticcheck
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Commit and push if changed
         run: |
-          files="versions.nix golangci-lint-versions.nix goreleaser-versions.nix gofumpt-versions.nix govulncheck-versions.nix gopls-versions.nix"
+          files="versions.nix golangci-lint-versions.nix goreleaser-versions.nix gofumpt-versions.nix govulncheck-versions.nix gopls-versions.nix delve-versions.nix staticcheck-versions.nix"
           if git diff --quiet -- $files; then
             echo "all version files are up to date"
             exit 0

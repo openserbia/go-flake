@@ -40,11 +40,11 @@ class ToolConfig:
     output: str          # data file name under repo root
     pname: str           # nix pname (also the binary name expected)
     # Tag form on the upstream repo. The {ver} placeholder is the dotted
-    # semver. The same string is used for git tag lookups AND for the
+    # version. The same string is used for git tag lookups AND for the
     # GitHub archive URL — GitHub accepts slashes in the path.
     tag_fmt: str
     # Regex that matches a raw upstream tag and captures the version in
-    # group 1. Used to filter `/tags` output back to a clean semver list.
+    # group 1. Used to filter `/tags` output back to a clean list.
     tag_re: re.Pattern
     # Subdir containing go.mod, "" for repo root. e.g. "gopls" for
     # golang/tools because the gopls module lives under tools/gopls/.
@@ -54,6 +54,11 @@ class ToolConfig:
     # single-binary module (gopls). Otherwise something like
     # "cmd/govulncheck" relative to mod_root.
     sub_package: str
+    # True for tools whose source tarball already contains a vendor/
+    # directory — buildGoModule then uses that directory directly and
+    # doesn't need a vendorHash. The script skips vendor discovery and
+    # emits `vendor = null;` in the data file (e.g. delve).
+    vendorless: bool = False
 
 
 TOOLS: dict[str, ToolConfig] = {
@@ -81,19 +86,59 @@ TOOLS: dict[str, ToolConfig] = {
         mod_root="gopls",
         sub_package=".",
     ),
+    "delve": ToolConfig(
+        repo="go-delve/delve",
+        min_version="1.22.0",
+        output="delve-versions.nix",
+        pname="delve",
+        tag_fmt="v{ver}",
+        tag_re=re.compile(r"^v(\d+\.\d+\.\d+)$"),
+        mod_root="",
+        sub_package="cmd/dlv",
+        # delve commits a vendor/ directory in every release tarball,
+        # so buildGoModule doesn't need a vendor hash.
+        vendorless=True,
+    ),
+    "staticcheck": ToolConfig(
+        repo="dominikh/go-tools",
+        # staticcheck (dominikh/go-tools) uses date-versioned tags
+        # without a v-prefix, and mixes 2-component (2026.1) with
+        # 3-component (2025.2.1) releases. The version parser handles
+        # both shapes; the floor is the first release that builds with
+        # modern Go modules.
+        min_version="2024.1",
+        output="staticcheck-versions.nix",
+        pname="staticcheck",
+        tag_fmt="{ver}",
+        tag_re=re.compile(r"^(\d{4}\.\d+(?:\.\d+)?)$"),
+        mod_root="",
+        sub_package="cmd/staticcheck",
+    ),
 }
 
 
+# Versions are stored as fixed-arity 3-tuples for orderable comparison
+# even when an upstream uses 2-component releases (staticcheck ships
+# `2026.1` and `2025.2.1` interchangeably). Missing components default
+# to 0; the original dotted form is rebuilt from `dotted_version` so
+# data files keep the upstream's own spelling.
 def parse_version(s: str) -> tuple[int, int, int] | None:
     if any(c in s for c in "-+"):
         return None
     parts = s.split(".")
-    if len(parts) != 3:
+    if len(parts) not in (2, 3):
         return None
     try:
-        return (int(parts[0]), int(parts[1]), int(parts[2]))
+        nums = [int(p) for p in parts]
     except ValueError:
         return None
+    if len(nums) == 2:
+        nums.append(0)
+    return (nums[0], nums[1], nums[2])
+
+
+def dotted_version(v: tuple[int, int, int], components: int) -> str:
+    return ".".join(str(n) for n in v[:components])
 
 
 def parse_min_version(s: str) -> tuple[int, int, int]:
@@ -175,31 +220,45 @@ def list_tags(cfg: ToolConfig, max_pages: int = 4) -> list[str]:
     return out
 
 
-NIX_VERSION_RE = re.compile(r'^\s*"(\d+\.\d+\.\d+)"\s*=\s*\{\s*$')
-NIX_FIELD_RE = re.compile(r'^\s*(src|vendor)\s*=\s*"(sha256-[A-Za-z0-9+/=]+)"\s*;\s*$')
+# Allow 2- or 3-component versions (staticcheck mixes `2026.1` and `2025.2.1`).
+NIX_VERSION_RE = re.compile(r'^\s*"(\d+(?:\.\d+){1,2})"\s*=\s*\{\s*$')
+# `vendor` may be either a quoted SRI hash or the bare keyword `null`
+# (used for vendorless tools like delve).
+NIX_FIELD_RE = re.compile(
+    r'^\s*(src|vendor)\s*=\s*(?:"(sha256-[A-Za-z0-9+/=]+)"|(null))\s*;\s*$'
+)
 
 
-def parse_existing(text: str) -> dict[tuple[int, int, int], dict[str, str]]:
-    out: dict[tuple[int, int, int], dict[str, str]] = {}
+# Per-version record: src is always an SRI hash; vendor is either an SRI
+# hash or None (meaning "vendor = null;"); _dotted is the upstream's own
+# dotted spelling, so 2-component releases round-trip as 2-component.
+def parse_existing(text: str) -> dict[tuple[int, int, int], dict[str, str | None]]:
+    out: dict[tuple[int, int, int], dict[str, str | None]] = {}
     cur_ver: tuple[int, int, int] | None = None
-    cur_map: dict[str, str] = {}
+    cur_dotted: str | None = None
+    cur_map: dict[str, str | None] = {}
     for line in text.splitlines():
         m = NIX_VERSION_RE.match(line)
         if m:
-            v = parse_version(m.group(1))
+            dotted = m.group(1)
+            v = parse_version(dotted)
             if v is not None:
                 cur_ver = v
+                cur_dotted = dotted
                 cur_map = {}
             continue
         if cur_ver is not None and line.strip() == "};":
-            if {"src", "vendor"}.issubset(cur_map):
+            if "src" in cur_map and "vendor" in cur_map:
+                cur_map["_dotted"] = cur_dotted
                 out[cur_ver] = cur_map
             cur_ver = None
+            cur_dotted = None
             cur_map = {}
             continue
         m = NIX_FIELD_RE.match(line)
         if m and cur_ver is not None:
-            cur_map[m.group(1)] = m.group(2)
+            # group(2) is the sha; group(3) is "null" when vendor is null.
+            cur_map[m.group(1)] = m.group(2)  # None when the null branch matched
     return out
 
 
@@ -284,38 +343,41 @@ def nix_discover_vendor(cfg: ToolConfig, version: str, src_hash: str) -> str:
 
 def collect(
     cfg: ToolConfig,
-    existing: dict[tuple[int, int, int], dict[str, str]],
+    existing: dict[tuple[int, int, int], dict[str, str | None]],
     min_version: tuple[int, int, int],
-) -> dict[tuple[int, int, int], dict[str, str]]:
+) -> dict[tuple[int, int, int], dict[str, str | None]]:
     out = {v: dict(m) for v, m in existing.items() if v >= min_version}
     for tag in list_tags(cfg):
         m = cfg.tag_re.match(tag)
         if m is None:
             continue
-        v = parse_version(m.group(1))
+        dotted = m.group(1)
+        v = parse_version(dotted)
         if v is None or v < min_version or v in out:
             continue
-        ver_str = ".".join(str(n) for n in v)
-        print(f"  resolving {cfg.tag_fmt.format(ver=ver_str)}", file=sys.stderr)
+        print(f"  resolving {cfg.tag_fmt.format(ver=dotted)}", file=sys.stderr)
         try:
-            src = nix_prefetch_src(cfg, ver_str)
-            vendor = nix_discover_vendor(cfg, ver_str, src)
+            src = nix_prefetch_src(cfg, dotted)
+            vendor = None if cfg.vendorless else nix_discover_vendor(cfg, dotted, src)
         except RuntimeError as e:
-            print(f"  skip {ver_str}: {e}", file=sys.stderr)
+            print(f"  skip {dotted}: {e}", file=sys.stderr)
             continue
-        out[v] = {"src": src, "vendor": vendor}
+        out[v] = {"src": src, "vendor": vendor, "_dotted": dotted}
     return out
 
 
-def render(versions: dict[tuple[int, int, int], dict[str, str]]) -> str:
+def render(versions: dict[tuple[int, int, int], dict[str, str | None]]) -> str:
     if not versions:
         return "{\n}\n"
     lines = ["{"]
     for v in sorted(versions):
-        ver = ".".join(str(n) for n in v)
-        lines.append(f'  "{ver}" = {{')
-        lines.append(f'    src    = "{versions[v]["src"]}";')
-        lines.append(f'    vendor = "{versions[v]["vendor"]}";')
+        spec = versions[v]
+        dotted = spec.get("_dotted") or ".".join(str(n) for n in v)
+        vendor = spec["vendor"]
+        vendor_field = "null" if vendor is None else f'"{vendor}"'
+        lines.append(f'  "{dotted}" = {{')
+        lines.append(f'    src    = "{spec["src"]}";')
+        lines.append(f'    vendor = {vendor_field};')
         lines.append("  };")
     lines.append("}")
     lines.append("")
