@@ -121,6 +121,17 @@
 
         keyOf = tool: systemKey.${tool}.${system} or null;
 
+        # Source-built tools route through nixpkgs' buildGoModule. On
+        # x86_64-freebsd that hits an infinite-recursion bug in nixpkgs'
+        # bmake/rsync stdenv setup — even a no-op
+        # `buildGoModule { vendorHash = null; src = …; }` blows up at
+        # eval time. Confirmed against minimal repros and reproduces on
+        # plain nixpkgs without this flake's wrappers, so it's upstream.
+        # Skip source-built tools on freebsd entirely; the binary mirrors
+        # (go, golangci-lint) still work because they use stdenvNoCC +
+        # fetchurl rather than buildGoModule.
+        sourceBuiltSupported = !pkgs.stdenv.hostPlatform.isFreeBSD;
+
         sortAsc = vs: builtins.sort (a: b: builtins.compareVersions a b < 0) vs;
 
         # Versions whose data has a sum for the current system's key.
@@ -430,8 +441,10 @@
 
         # govulncheck doesn't fit toolPackages — its data file is
         # `version -> {src, vendor}` (no per-system platform key) and
-        # every version is buildable on every system the flake spans.
+        # every version is buildable on every system the flake spans
+        # (excluding freebsd — see sourceBuiltSupported).
         govulncheckPkgs =
+          if !sourceBuiltSupported then {} else
           let
             avail = sortAsc (builtins.attrNames govulncheckVersions);
             versioned = builtins.listToAttrs
@@ -440,8 +453,9 @@
           in versioned // alias;
 
         # Same shape as govulncheckPkgs — source-built tool with no
-        # per-system platform key, exposed on every system the flake spans.
+        # per-system platform key, exposed on every supported system.
         goplsPkgs =
+          if !sourceBuiltSupported then {} else
           let
             avail = sortAsc (builtins.attrNames goplsVersions);
             versioned = builtins.listToAttrs
@@ -450,6 +464,7 @@
           in versioned // alias;
 
         delvePkgs =
+          if !sourceBuiltSupported then {} else
           let
             avail = sortAsc (builtins.attrNames delveVersions);
             versioned = builtins.listToAttrs
@@ -462,6 +477,7 @@
         # alphasort-by-compareVersions used elsewhere picks the right
         # newest entry for the alias.
         staticcheckPkgs =
+          if !sourceBuiltSupported then {} else
           let
             avail = sortAsc (builtins.attrNames staticcheckVersions);
             versioned = builtins.listToAttrs

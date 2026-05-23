@@ -120,6 +120,9 @@ upstream publishes for. The same workflow/README steps apply.
   pads to 3-component for sorting and stores the original dotted form in
   `_dotted` so the data file round-trips. Don't normalize the spelling.
 
+- **`buildGoModule` infinite-recurses on x86_64-freebsd in nixpkgs**.
+  Minimal repro: `(import <nixpkgs> { system = "x86_64-freebsd"; }).buildGoModule { vendorHash = null; src = builtins.toFile "x" ""; … }` blows up at eval time. The trace runs through `bmake-filtered-src` → `rsync-3.4.1.buildInputs`. Not our bug; it's upstream nixpkgs' freebsd stdenv setup. `flake.nix` defines `sourceBuiltSupported = !pkgs.stdenv.hostPlatform.isFreeBSD` and every source-built tool's pkg set short-circuits to `{}` on freebsd. Binary mirrors (`go`, `golangci-lint`) still work on freebsd because they use `stdenvNoCC.mkDerivation` + `fetchurl`. Revisit when nixpkgs fixes upstream — re-test by removing the `sourceBuiltSupported` gates and running `nix flake check --all-systems`.
+
 - **delve fortify**. `hardeningDisable = [ "fortify" ]` is necessary on
   hardened systems for CGO-based debugging; we skip the additional
   `disable-fortify.diff` that nixpkgs carries because vendoring a
