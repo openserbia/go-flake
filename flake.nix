@@ -307,12 +307,14 @@
         buildGoLatest = pkgs.buildGoModule.override { go = latestGo; };
 
         # govulncheck has no upstream binaries — build from source.
-        # buildGoModule pulls Go and the module cache from nixpkgs; the
+        # Like every other source-built tool here (and like nixpkgs'
+        # buildGoLatestModule), compile against the flake's latest mirrored
+        # Go rather than nixpkgs' — that's the whole point of the flake. The
         # vendorHash is the FOD hash of the resolved module set and is
         # specific to that version's go.sum.
         mkGovulncheck = version:
           let spec = govulncheckVersions.${version};
-          in pkgs.buildGoModule {
+          in buildGoLatest {
             pname = "govulncheck";
             inherit version;
             src = pkgs.fetchFromGitHub {
