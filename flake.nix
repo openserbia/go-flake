@@ -474,7 +474,13 @@
             };
             modRoot = "gopls";
             vendorHash = spec.vendor;
-            subPackages = [ "." ];
+            # "." is gopls itself; modernize is the companion analyzer binary
+            # nixpkgs also ships from this module. The cmd path is present in
+            # every mirrored gopls (verified 0.20.0–0.22.0).
+            subPackages = [
+              "."
+              "internal/analysis/modernize/cmd/modernize"
+            ];
             # fetchFromGitHub strips VCS info, so without this gopls
             # reports `(devel)` instead of its real version at runtime.
             ldflags = [ "-X main.version=v${version}" ];
