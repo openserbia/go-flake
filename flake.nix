@@ -88,6 +88,16 @@
       # version "1.26.3" -> "<prefix>_1_26_3"
       attrFor = prefix: v: "${prefix}_${builtins.replaceStrings [ "." ] [ "_" ] v}";
 
+      # Sole maintainer of this flake; attached to every package's meta.
+      # Named flakeMaintainers (not maintainers) so it doesn't read as a
+      # shadow of lib.maintainers under mkGo's `with lib;`.
+      flakeMaintainers = [{
+        name = "OCharnyshevich";
+        email = "4406080+OCharnyshevich@users.noreply.github.com";
+        github = "OCharnyshevich";
+        githubId = 4406080;
+      }];
+
       # URL builders. Each takes (version, upstreamKey) and returns a URL.
       goUrl = version: key:
         "https://go.dev/dl/go${version}.${key}.tar.gz";
@@ -200,6 +210,7 @@
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ sourceTypes.binaryNativeCode ];
               platforms = builtins.attrNames systemKey.go;
+              maintainers = flakeMaintainers;
               mainProgram = "go";
             };
           };
@@ -236,6 +247,7 @@
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
               platforms = builtins.attrNames systemKey.${pname};
+              maintainers = flakeMaintainers;
               mainProgram = pname;
             };
           };
@@ -261,6 +273,7 @@
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
               platforms = builtins.attrNames systemKey.${pname};
+              maintainers = flakeMaintainers;
               mainProgram = pname;
             };
           };
@@ -366,6 +379,7 @@
               changelog = "https://github.com/golang/vuln/releases/tag/v${version}";
               license = lib.licenses.bsd3;
               platforms = sourceBuiltPlatforms;
+              maintainers = flakeMaintainers;
               mainProgram = "govulncheck";
             };
           };
@@ -411,6 +425,7 @@
               changelog = "https://github.com/go-delve/delve/blob/v${version}/CHANGELOG.md";
               license = lib.licenses.mit;
               platforms = sourceBuiltPlatforms;
+              maintainers = flakeMaintainers;
               mainProgram = "dlv";
             };
           };
@@ -438,6 +453,7 @@
               changelog = "https://github.com/dominikh/go-tools/releases/tag/${version}";
               license = lib.licenses.mit;
               platforms = sourceBuiltPlatforms;
+              maintainers = flakeMaintainers;
               mainProgram = "staticcheck";
             };
           };
@@ -469,6 +485,7 @@
               changelog = "https://github.com/golang/tools/releases/tag/gopls/v${version}";
               license = lib.licenses.bsd3;
               platforms = sourceBuiltPlatforms;
+              maintainers = flakeMaintainers;
               mainProgram = "gopls";
             };
           };
