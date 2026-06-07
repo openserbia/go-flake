@@ -3,3 +3,7 @@ result-*
 .direnv
 .idea/
 .vscode/
+
+# Python bytecode cache from scripts/
+__pycache__/
+*.py[cod]
