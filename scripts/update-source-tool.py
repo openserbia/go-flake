@@ -64,7 +64,11 @@ class ToolConfig:
 TOOLS: dict[str, ToolConfig] = {
     "govulncheck": ToolConfig(
         repo="golang/vuln",
-        min_version="1.0.0",
+        # 1.0.x–1.1.3 vendored an old golang.org/x/tools that no longer
+        # compiles under modern Go (tokeninternal.go "invalid array length");
+        # 1.1.4 is the first release that builds against the latest mirrored
+        # Go, so older tags are pruned rather than mirrored unbuildable.
+        min_version="1.1.4",
         output="govulncheck-versions.nix",
         pname="govulncheck",
         tag_fmt="v{ver}",
@@ -104,9 +108,10 @@ TOOLS: dict[str, ToolConfig] = {
         # staticcheck (dominikh/go-tools) uses date-versioned tags
         # without a v-prefix, and mixes 2-component (2026.1) with
         # 3-component (2025.2.1) releases. The version parser handles
-        # both shapes; the floor is the first release that builds with
-        # modern Go modules.
-        min_version="2024.1",
+        # both shapes. 2024.x vendored an old golang.org/x/tools that no
+        # longer compiles under modern Go, so the floor is 2025.1 — the
+        # first release that builds against the latest mirrored Go.
+        min_version="2025.1",
         output="staticcheck-versions.nix",
         pname="staticcheck",
         tag_fmt="{ver}",
