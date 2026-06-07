@@ -132,6 +132,12 @@
         # fetchurl rather than buildGoModule.
         sourceBuiltSupported = !pkgs.stdenv.hostPlatform.isFreeBSD;
 
+        # Platforms a source-built tool actually supports: every system the
+        # flake spans except freebsd, where buildGoModule can't even evaluate
+        # (see sourceBuiltSupported). Keeps meta.platforms honest instead of
+        # claiming the whole `systems` union.
+        sourceBuiltPlatforms = builtins.filter (s: !(lib.hasInfix "freebsd" s)) systems;
+
         sortAsc = vs: builtins.sort (a: b: builtins.compareVersions a b < 0) vs;
 
         # Versions whose data has a sum for the current system's key.
@@ -192,7 +198,7 @@
               # Mirrored prebuilt binary, not built from source — nixpkgs'
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ sourceTypes.binaryNativeCode ];
-              platforms = systems;
+              platforms = builtins.attrNames systemKey.go;
               mainProgram = "go";
             };
           };
@@ -228,7 +234,7 @@
               # Mirrored prebuilt binary, not built from source — nixpkgs'
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-              platforms = systems;
+              platforms = builtins.attrNames systemKey.${pname};
               mainProgram = pname;
             };
           };
@@ -253,7 +259,7 @@
               # Mirrored prebuilt binary, not built from source — nixpkgs'
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
-              platforms = systems;
+              platforms = builtins.attrNames systemKey.${pname};
               mainProgram = pname;
             };
           };
@@ -354,7 +360,7 @@
               description = "Reports known vulnerabilities affecting Go code (built from source)";
               homepage = "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck";
               license = lib.licenses.bsd3;
-              platforms = systems;
+              platforms = sourceBuiltPlatforms;
               mainProgram = "govulncheck";
             };
           };
@@ -398,7 +404,7 @@
               description = "Debugger for Go (built from source against this flake's latest Go)";
               homepage = "https://github.com/go-delve/delve";
               license = lib.licenses.mit;
-              platforms = systems;
+              platforms = sourceBuiltPlatforms;
               mainProgram = "dlv";
             };
           };
@@ -424,7 +430,7 @@
               description = "Go linter applying advanced static-analysis checks (built from source against this flake's latest Go)";
               homepage = "https://staticcheck.dev";
               license = lib.licenses.mit;
-              platforms = systems;
+              platforms = sourceBuiltPlatforms;
               mainProgram = "staticcheck";
             };
           };
@@ -454,7 +460,7 @@
               description = "Official language server for Go (built from source against this flake's latest Go)";
               homepage = "https://pkg.go.dev/golang.org/x/tools/gopls";
               license = lib.licenses.bsd3;
-              platforms = systems;
+              platforms = sourceBuiltPlatforms;
               mainProgram = "gopls";
             };
           };
