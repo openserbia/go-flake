@@ -189,6 +189,9 @@
               description = "Go ${version} (upstream go.dev binary)";
               homepage = "https://go.dev";
               license = licenses.bsd3;
+              # Mirrored prebuilt binary, not built from source — nixpkgs'
+              # convention for such packages is to declare it explicitly.
+              sourceProvenance = [ sourceTypes.binaryNativeCode ];
               platforms = systems;
               mainProgram = "go";
             };
@@ -222,6 +225,9 @@
             '';
             meta = {
               inherit description homepage license;
+              # Mirrored prebuilt binary, not built from source — nixpkgs'
+              # convention for such packages is to declare it explicitly.
+              sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
               platforms = systems;
               mainProgram = pname;
             };
@@ -244,6 +250,9 @@
             '';
             meta = {
               inherit description homepage license;
+              # Mirrored prebuilt binary, not built from source — nixpkgs'
+              # convention for such packages is to declare it explicitly.
+              sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
               platforms = systems;
               mainProgram = pname;
             };
