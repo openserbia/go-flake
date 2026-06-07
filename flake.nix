@@ -194,6 +194,7 @@
             meta = with lib; {
               description = "Go ${version} (upstream go.dev binary)";
               homepage = "https://go.dev";
+              changelog = "https://go.dev/doc/devel/release#go${versions.majorMinor version}";
               license = licenses.bsd3;
               # Mirrored prebuilt binary, not built from source — nixpkgs'
               # convention for such packages is to declare it explicitly.
@@ -204,7 +205,7 @@
           };
 
         # tar.gz tool: extract, find named binary, install to $out/bin/.
-        mkArchivedTool = { pname, version, url, sha256, description, homepage, license }:
+        mkArchivedTool = { pname, version, url, sha256, description, homepage, license, changelog }:
           pkgs.stdenvNoCC.mkDerivation {
             inherit pname version;
             src = pkgs.fetchurl { inherit url sha256; };
@@ -230,7 +231,7 @@
               runHook postInstall
             '';
             meta = {
-              inherit description homepage license;
+              inherit description homepage license changelog;
               # Mirrored prebuilt binary, not built from source — nixpkgs'
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
@@ -240,7 +241,7 @@
           };
 
         # Bare-binary tool (e.g. gofumpt): no archive, $src is the binary.
-        mkBareTool = { pname, version, url, sha256, description, homepage, license }:
+        mkBareTool = { pname, version, url, sha256, description, homepage, license, changelog }:
           pkgs.stdenvNoCC.mkDerivation {
             inherit pname version;
             src = pkgs.fetchurl { inherit url sha256; };
@@ -255,7 +256,7 @@
               runHook postInstall
             '';
             meta = {
-              inherit description homepage license;
+              inherit description homepage license changelog;
               # Mirrored prebuilt binary, not built from source — nixpkgs'
               # convention for such packages is to declare it explicitly.
               sourceProvenance = [ lib.sourceTypes.binaryNativeCode ];
@@ -274,6 +275,7 @@
             sha256 = spec.${k};
             description = "Fast linters runner for Go (upstream binary)";
             homepage = "https://golangci-lint.run";
+            changelog = "https://github.com/golangci/golangci-lint/blob/v${version}/CHANGELOG.md";
             license = lib.licenses.gpl3Plus;
           };
 
@@ -287,6 +289,7 @@
             sha256 = spec.${k};
             description = "Release-automation tool for Go projects (upstream binary)";
             homepage = "https://goreleaser.com";
+            changelog = "https://github.com/goreleaser/goreleaser/releases/tag/v${version}";
             license = lib.licenses.mit;
           };
 
@@ -300,6 +303,7 @@
             sha256 = spec.${k};
             description = "Stricter gofmt (upstream binary)";
             homepage = "https://github.com/mvdan/gofumpt";
+            changelog = "https://github.com/mvdan/gofumpt/releases/tag/v${version}";
             license = lib.licenses.bsd3;
           };
 
@@ -359,6 +363,7 @@
             meta = {
               description = "Reports known vulnerabilities affecting Go code (built from source)";
               homepage = "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck";
+              changelog = "https://github.com/golang/vuln/releases/tag/v${version}";
               license = lib.licenses.bsd3;
               platforms = sourceBuiltPlatforms;
               mainProgram = "govulncheck";
@@ -403,6 +408,7 @@
             meta = {
               description = "Debugger for Go (built from source against this flake's latest Go)";
               homepage = "https://github.com/go-delve/delve";
+              changelog = "https://github.com/go-delve/delve/blob/v${version}/CHANGELOG.md";
               license = lib.licenses.mit;
               platforms = sourceBuiltPlatforms;
               mainProgram = "dlv";
@@ -429,6 +435,7 @@
             meta = {
               description = "Go linter applying advanced static-analysis checks (built from source against this flake's latest Go)";
               homepage = "https://staticcheck.dev";
+              changelog = "https://github.com/dominikh/go-tools/releases/tag/${version}";
               license = lib.licenses.mit;
               platforms = sourceBuiltPlatforms;
               mainProgram = "staticcheck";
@@ -459,6 +466,7 @@
             meta = {
               description = "Official language server for Go (built from source against this flake's latest Go)";
               homepage = "https://pkg.go.dev/golang.org/x/tools/gopls";
+              changelog = "https://github.com/golang/tools/releases/tag/gopls/v${version}";
               license = lib.licenses.bsd3;
               platforms = sourceBuiltPlatforms;
               mainProgram = "gopls";
