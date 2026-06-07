@@ -377,12 +377,23 @@
               hash = spec.src;
             };
             vendorHash = spec.vendor;
+            nativeBuildInputs = [ pkgs.installShellFiles ];
             subPackages = [ "cmd/dlv" ];
             ldflags = [ "-s" "-w" ];
             hardeningDisable = [ "fortify" ];
             # delve's tests reach out to local sockets and assume a
             # connected workspace; skip them in the sandbox.
             doCheck = false;
+            # dlv-dap is the binary name the VSCode Go extension launches for
+            # DAP debugging; nixpkgs ships the same symlink. Shell completions
+            # come straight from delve's own `completion` subcommand.
+            postInstall = ''
+              ln $out/bin/dlv $out/bin/dlv-dap
+              installShellCompletion --cmd dlv \
+                --bash <($out/bin/dlv completion bash) \
+                --fish <($out/bin/dlv completion fish) \
+                --zsh <($out/bin/dlv completion zsh)
+            '';
             meta = {
               description = "Debugger for Go (built from source against this flake's latest Go)";
               homepage = "https://github.com/go-delve/delve";
