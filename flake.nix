@@ -325,6 +325,19 @@
             };
             vendorHash = spec.vendor;
             subPackages = [ "cmd/govulncheck" ];
+            # fetchFromGitHub strips VCS info, so debug.ReadBuildInfo() reports
+            # an empty/"(devel)" main version and govulncheck's scannerVersion()
+            # falls back to a meaningless "v0.0.0". Bake the real version into
+            # the same spot nixpkgs' version.patch does (verified byte-identical
+            # across every mirrored govulncheck). --replace-fail (not -quiet) so
+            # a future upstream rewrite of this block surfaces as a build failure
+            # rather than silently regressing the reported version.
+            postPatch = ''
+              substituteInPlace internal/scan/run.go \
+                --replace-fail 'if bi.Main.Version != "" && bi.Main.Version != "(devel)" {' 'if true {' \
+                --replace-fail 'cfg.ScannerVersion = bi.Main.Version' 'cfg.ScannerVersion = "${version}"'
+            '';
+            ldflags = [ "-s" "-w" ];
             # The repo's tests reach out to vuln.go.dev and assume an
             # internet-connected workspace; skip them in the sandbox.
             doCheck = false;
