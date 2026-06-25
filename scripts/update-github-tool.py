@@ -65,6 +65,10 @@ def goreleaser_checksums(tag: str, ver: str) -> str:
     return f"https://github.com/goreleaser/goreleaser/releases/download/{tag}/checksums.txt"
 
 
+def doclint_checksums(tag: str, ver: str) -> str:
+    return f"https://github.com/openserbia/doclint/releases/download/{tag}/checksums.txt"
+
+
 TOOLS: dict[str, ToolConfig] = {
     "golangci-lint": ToolConfig(
         repo="golangci/golangci-lint",
@@ -85,6 +89,17 @@ TOOLS: dict[str, ToolConfig] = {
         ),
         mode="checksums",
         checksums_url=goreleaser_checksums,
+    ),
+    # First-party: openserbia's own GoReleaser-published linter.
+    "doclint": ToolConfig(
+        repo="openserbia/doclint",
+        min_version="0.1.0",
+        output="doclint-versions.nix",
+        asset_pattern=re.compile(
+            r"^doclint_(?P<ver>[\d.]+)_(?P<os>[a-z]+)_(?P<arch>[a-z0-9]+)\.tar\.gz$"
+        ),
+        mode="checksums",
+        checksums_url=doclint_checksums,
     ),
     "gofumpt": ToolConfig(
         repo="mvdan/gofumpt",

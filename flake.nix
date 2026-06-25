@@ -16,6 +16,7 @@
       goplsVersions        = import ./gopls-versions.nix;
       delveVersions        = import ./delve-versions.nix;
       staticcheckVersions  = import ./staticcheck-versions.nix;
+      doclintVersions      = import ./doclint-versions.nix;
 
       # Per-tool: nix `system` -> the upstream platform key in that tool's
       # data file (e.g. "linux-amd64", "linux-armv7"). Sparse — if a system
@@ -78,6 +79,14 @@
           "x86_64-darwin"  = "darwin-amd64";
           "aarch64-darwin" = "darwin-arm64";
         };
+
+        # doclint (openserbia) ships only linux/darwin × amd64/arm64.
+        doclint = {
+          "x86_64-linux"   = "linux-amd64";
+          "aarch64-linux"  = "linux-arm64";
+          "x86_64-darwin"  = "darwin-amd64";
+          "aarch64-darwin" = "darwin-arm64";
+        };
       };
 
       # Union of nix systems any tool exposes. The flake evaluates over this set.
@@ -122,6 +131,11 @@
       # gofumpt assets use underscore between os and arch, no extension.
       gofumptUrl = version: key:
         "https://github.com/mvdan/gofumpt/releases/download/v${version}/gofumpt_v${version}_${builtins.replaceStrings [ "-" ] [ "_" ] key}";
+
+      # doclint's GoReleaser archive: doclint_<version>_<os>_<arch>.tar.gz
+      # (underscore between os and arch; systemKey "linux-amd64" -> "linux_amd64").
+      doclintUrl = version: key:
+        "https://github.com/openserbia/doclint/releases/download/v${version}/doclint_${version}_${builtins.replaceStrings [ "-" ] [ "_" ] key}.tar.gz";
     in
     flake-utils.lib.eachSystem systems (system:
       let
@@ -320,6 +334,22 @@
             license = lib.licenses.bsd3;
           };
 
+        # doclint: openserbia's own GoReleaser-published binary; same archive
+        # shape as golangci-lint, so it routes through mkArchivedTool.
+        mkDoclint = version:
+          let k = systemKey.doclint.${system};
+              spec = doclintVersions.${version};
+          in mkArchivedTool {
+            pname = "doclint";
+            inherit version;
+            url = doclintUrl version k;
+            sha256 = spec.${k};
+            description = "Hugo markdown + data-file linter with custom rules (openserbia binary)";
+            homepage = "https://github.com/openserbia/doclint";
+            changelog = "https://github.com/openserbia/doclint/releases/tag/v${version}";
+            license = lib.licenses.mit;
+          };
+
         # Latest mirrored Go for this system. Used as the toolchain for
         # source-built tools where pinning to the freshest Go matters
         # (notably gopls — see mkGopls). Falls back to nixpkgs.go if
@@ -510,6 +540,7 @@
         golangciLintPkgs  = toolPackages { tool = "golangci-lint"; versions = golangciLintVersions; mkDrv = mkGolangciLint; };
         goreleaserPkgs    = toolPackages { tool = "goreleaser"; versions = goreleaserVersions; mkDrv = mkGoreleaser; };
         gofumptPkgs       = toolPackages { tool = "gofumpt"; versions = gofumptVersions; mkDrv = mkGofumpt; };
+        doclintPkgs       = toolPackages { tool = "doclint"; versions = doclintVersions; mkDrv = mkDoclint; };
 
         # govulncheck doesn't fit toolPackages — its data file is
         # `version -> {src, vendor}` (no per-system platform key) and
@@ -562,6 +593,6 @@
           if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
       in
       {
-        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
       });
 }

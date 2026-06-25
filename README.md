@@ -13,6 +13,7 @@
 | [`golangci-lint`](https://golangci-lint.run)          | GitHub releases        | per-release `<name>-checksums.txt` | daily   |
 | [`goreleaser`](https://goreleaser.com)                | GitHub releases        | per-release `checksums.txt`        | daily   |
 | [`gofumpt`](https://github.com/mvdan/gofumpt)         | GitHub releases        | per-asset API `digest` field       | daily   |
+| [`doclint`](https://github.com/openserbia/doclint)    | GitHub releases (first-party) | per-release `checksums.txt`        | daily   |
 | [`govulncheck`](https://golang.org/x/vuln)            | GitHub git tags        | source tarball + vendor SHA256     | daily   |
 | [`gopls`](https://pkg.go.dev/golang.org/x/tools/gopls)| GitHub git tags        | source tarball + vendor SHA256     | daily   |
 | [`delve`](https://github.com/go-delve/delve)          | GitHub git tags        | source tarball (vendored)          | daily   |
@@ -45,6 +46,7 @@ the bundled vendor tree directly.
     "golangci-lint": "github:openserbia/go-flake#golangci-lint",
     "goreleaser": "github:openserbia/go-flake#goreleaser",
     "gofumpt": "github:openserbia/go-flake#gofumpt",
+    "doclint": "github:openserbia/go-flake#doclint",
     "govulncheck": "github:openserbia/go-flake#govulncheck",
     "gopls": "github:openserbia/go-flake#gopls",
     "delve": "github:openserbia/go-flake#delve",
@@ -97,6 +99,7 @@ Or browse the data files directly:
 - [`golangci-lint-versions.nix`](./golangci-lint-versions.nix)
 - [`goreleaser-versions.nix`](./goreleaser-versions.nix)
 - [`gofumpt-versions.nix`](./gofumpt-versions.nix)
+- [`doclint-versions.nix`](./doclint-versions.nix) — first-party
 - [`govulncheck-versions.nix`](./govulncheck-versions.nix)
 - [`gopls-versions.nix`](./gopls-versions.nix)
 - [`delve-versions.nix`](./delve-versions.nix)
@@ -136,6 +139,7 @@ runs five idempotent updater scripts, then commits any diff straight to `main`:
 | `scripts/update-github-tool.py --tool golangci-lint` | `golangci-lint-versions.nix` | per-release `golangci-lint-<ver>-checksums.txt` |
 | `scripts/update-github-tool.py --tool goreleaser`    | `goreleaser-versions.nix`    | per-release `checksums.txt`                     |
 | `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field       |
+| `scripts/update-github-tool.py --tool doclint`       | `doclint-versions.nix`       | per-release `checksums.txt` (first-party)       |
 | `scripts/update-source-tool.py --tool govulncheck`   | `govulncheck-versions.nix`   | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool gopls`         | `gopls-versions.nix`         | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool delve`         | `delve-versions.nix`         | `nix-prefetch-url --unpack` (vendor=null; bundled vendor/)     |
@@ -166,4 +170,5 @@ change is enough to be back on a clean stdlib or a current linter.
 
 This flake is MIT. Each mirrored binary is licensed by its upstream project
 (Go: [BSD-3-Clause](https://go.dev/LICENSE); golangci-lint: GPL-3.0-or-later;
-goreleaser: MIT; gofumpt: BSD-3-Clause; govulncheck: BSD-3-Clause).
+goreleaser: MIT; gofumpt: BSD-3-Clause; govulncheck: BSD-3-Clause;
+doclint: MIT, openserbia first-party).

@@ -40,6 +40,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Regenerate doclint-versions.nix
+        run: ./scripts/update-github-tool.py --tool doclint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Regenerate govulncheck-versions.nix
         run: ./scripts/update-source-tool.py --tool govulncheck
         env:
@@ -62,7 +67,7 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          files="versions.nix golangci-lint-versions.nix goreleaser-versions.nix gofumpt-versions.nix govulncheck-versions.nix gopls-versions.nix delve-versions.nix staticcheck-versions.nix"
+          files="versions.nix golangci-lint-versions.nix goreleaser-versions.nix gofumpt-versions.nix doclint-versions.nix govulncheck-versions.nix gopls-versions.nix delve-versions.nix staticcheck-versions.nix"
           if git diff --quiet -- $files; then
             echo "all version files are up to date"
             exit 0
