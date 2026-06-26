@@ -47,4 +47,10 @@
     "linux-amd64"  = "f4b025c16482d3cde823ba4803bd8194a2e3712cd6fabc4ef9ec60dba1ab00fb";
     "linux-arm64"  = "4dce495b4068efc16523bf513d5c091b1510300d1d0742adf6b97a341ba9b0fd";
   };
+  "0.4.0" = {
+    "darwin-amd64" = "13b839f96c57f85abf9303f7a2c4adb4e35f9e4a31012a30a937102926080e49";
+    "darwin-arm64" = "bcd2ce5021499f68949d19b9553d8b994f15dda08e5ac889f58194bd212d6892";
+    "linux-amd64"  = "154222556c99bfa63c58435163188e9ff0bcbe2eb599f1f599d4e955a4f7fc14";
+    "linux-arm64"  = "4cd473910274ec32d079e92dfaee303c8513d7b6e85187ecd5bd7e54d17df012";
+  };
 }
