@@ -592,11 +592,9 @@
           let avail = availableFor goVersions "go"; in
           if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
 
-        allPkgs = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
       in
       {
-        packages = allPkgs;
-        legacyPackages = allPkgs;
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
 
         devShells = lib.optionalAttrs sourceBuiltSupported {
           default = pkgs.mkShell {
