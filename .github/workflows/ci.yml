@@ -17,6 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
       # Pure round-trip check (parse + render must produce identical
       # bytes). Catches hand-edits that break idempotency and any
       # parser/renderer regressions. No network.
