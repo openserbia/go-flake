@@ -59,7 +59,33 @@ Add the flake reference directly to your `packages` list in `devbox.json`:
 
 Do not use the `<pkg>@github:...` syntax; Devbox treats flake references as full
 package identifiers. Pin a specific version with `_<major>_<minor>_<patch>`,
-e.g. `#go_1_26_5`.
+e.g. `#go_1_26_5`. The short fragment lets Devbox/Nix infer the current
+system, which is the most portable form when it resolves cleanly.
+
+If Devbox reports that a pinned flake package is ambiguous between `packages`
+and `legacyPackages`, qualify the standard flake output explicitly. In that
+form the system is part of the flake output path, so replace `x86_64-linux`
+with the system you are building on:
+```json
+{
+  "packages": [
+    "github:openserbia/go-flake#packages.x86_64-linux.go_1_26_5"
+  ]
+}
+```
+
+For object-style `packages`, use the fully qualified reference as the key:
+```json
+{
+  "packages": {
+    "github:openserbia/go-flake#packages.x86_64-linux.go_1_26_5": ""
+  }
+}
+```
+
+This works around Devbox resolver paths that see both
+`packages.<system>.<attr>` and `legacyPackages.<system>.<attr>` for the same
+short fragment and refuse to pick one.
 
 If you get a "package not found" error when pinning a version, you may need to
 update your flake lock to pull the latest versions from this repository:
@@ -97,7 +123,7 @@ the `tarball+codeload` URL — same content, served via the codeload CDN:
 ```json
 {
   "packages": [
-    "tarball+https://codeload.github.com/openserbia/go-flake/tar.gz/main#go_1_26_5"
+    "tarball+https://codeload.github.com/openserbia/go-flake/tar.gz/main#packages.x86_64-linux.go_1_26_5"
   ]
 }
 ```
