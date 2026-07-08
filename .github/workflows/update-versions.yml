@@ -22,51 +22,46 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
       - name: Regenerate versions.nix (go)
-        run: ./scripts/update-versions.py
+        run: nix-shell -p python3 --run ./scripts/update-versions.py
 
       - name: Regenerate golangci-lint-versions.nix
-        run: ./scripts/update-github-tool.py --tool golangci-lint
+        run: nix-shell -p python3 --run "./scripts/update-github-tool.py --tool golangci-lint"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate goreleaser-versions.nix
-        run: ./scripts/update-github-tool.py --tool goreleaser
+        run: nix-shell -p python3 --run "./scripts/update-github-tool.py --tool goreleaser"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate gofumpt-versions.nix
-        run: ./scripts/update-github-tool.py --tool gofumpt
+        run: nix-shell -p python3 --run "./scripts/update-github-tool.py --tool gofumpt"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate doclint-versions.nix
-        run: ./scripts/update-github-tool.py --tool doclint
+        run: nix-shell -p python3 --run "./scripts/update-github-tool.py --tool doclint"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate govulncheck-versions.nix
-        run: ./scripts/update-source-tool.py --tool govulncheck
+        run: nix-shell -p python3 --run "./scripts/update-source-tool.py --tool govulncheck"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate gopls-versions.nix
-        run: ./scripts/update-source-tool.py --tool gopls
+        run: nix-shell -p python3 --run "./scripts/update-source-tool.py --tool gopls"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate delve-versions.nix
-        run: ./scripts/update-source-tool.py --tool delve
+        run: nix-shell -p python3 --run "./scripts/update-source-tool.py --tool delve"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Regenerate staticcheck-versions.nix
-        run: ./scripts/update-source-tool.py --tool staticcheck
+        run: nix-shell -p python3 --run "./scripts/update-source-tool.py --tool staticcheck"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

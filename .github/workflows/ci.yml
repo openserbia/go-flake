@@ -14,31 +14,33 @@ jobs:
     # there's no concern about secrets exposure on fork PRs (none would
     # run here anyway; self-hosted refuses fork-PR triggers).
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
 
       # Pure round-trip check (parse + render must produce identical
       # bytes). Catches hand-edits that break idempotency and any
       # parser/renderer regressions. No network.
       - name: Validate versions.nix
-        run: ./scripts/update-versions.py --validate
+        run: nix-shell -p python3 --run "./scripts/update-versions.py --validate"
 
       - name: Validate binary-mirror data files
         run: |
-          for t in golangci-lint goreleaser gofumpt; do
-            ./scripts/update-github-tool.py --tool "$t" --validate
-          done
+          nix-shell -p python3 --run '
+            for t in golangci-lint goreleaser gofumpt; do
+              ./scripts/update-github-tool.py --tool "$t" --validate
+            done
+          '
 
       - name: Validate source-built data files
         run: |
-          for t in govulncheck gopls delve staticcheck; do
-            ./scripts/update-source-tool.py --tool "$t" --validate
-          done
+          nix-shell -p python3 --run '
+            for t in govulncheck gopls delve staticcheck; do
+              ./scripts/update-source-tool.py --tool "$t" --validate
+            done
+          '
 
       # Flake eval check across every system the flake exposes. Doesn't
       # build anything (--no-build); just walks each derivation and

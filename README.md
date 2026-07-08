@@ -7,17 +7,17 @@
 
 ## At a glance
 
-| Tool                                                  | Source                 | Pinning                            | Refresh |
-|-------------------------------------------------------|------------------------|------------------------------------|---------|
-| [`go`](https://go.dev)                                | `go.dev/dl/?mode=json` | published SHA256                   | daily   |
-| [`golangci-lint`](https://golangci-lint.run)          | GitHub releases        | per-release `<name>-checksums.txt` | daily   |
-| [`goreleaser`](https://goreleaser.com)                | GitHub releases        | per-release `checksums.txt`        | daily   |
-| [`gofumpt`](https://github.com/mvdan/gofumpt)         | GitHub releases        | per-asset API `digest` field       | daily   |
-| [`doclint`](https://github.com/openserbia/doclint)    | GitHub releases (first-party) | per-release `checksums.txt`        | daily   |
-| [`govulncheck`](https://golang.org/x/vuln)            | GitHub git tags        | source tarball + vendor SHA256     | daily   |
-| [`gopls`](https://pkg.go.dev/golang.org/x/tools/gopls)| GitHub git tags        | source tarball + vendor SHA256     | daily   |
-| [`delve`](https://github.com/go-delve/delve)          | GitHub git tags        | source tarball (vendored)          | daily   |
-| [`staticcheck`](https://staticcheck.dev)              | GitHub git tags        | source tarball + vendor SHA256     | daily   |
+| Tool                                                   | Source                        | Pinning                            | Refresh |
+|--------------------------------------------------------|-------------------------------|------------------------------------|---------|
+| [`go`](https://go.dev)                                 | `go.dev/dl/?mode=json`        | published SHA256                   | daily   |
+| [`golangci-lint`](https://golangci-lint.run)           | GitHub releases               | per-release `<name>-checksums.txt` | daily   |
+| [`goreleaser`](https://goreleaser.com)                 | GitHub releases               | per-release `checksums.txt`        | daily   |
+| [`gofumpt`](https://github.com/mvdan/gofumpt)          | GitHub releases               | per-asset API `digest` field       | daily   |
+| [`doclint`](https://github.com/openserbia/doclint)     | GitHub releases (first-party) | per-release `checksums.txt`        | daily   |
+| [`govulncheck`](https://golang.org/x/vuln)             | GitHub git tags               | source tarball + vendor SHA256     | daily   |
+| [`gopls`](https://pkg.go.dev/golang.org/x/tools/gopls) | GitHub git tags               | source tarball + vendor SHA256     | daily   |
+| [`delve`](https://github.com/go-delve/delve)           | GitHub git tags               | source tarball (vendored)          | daily   |
+| [`staticcheck`](https://staticcheck.dev)               | GitHub git tags               | source tarball + vendor SHA256     | daily   |
 
 For the binary mirrors, every (os, arch) the upstream actually publishes is
 mirrored — coverage is sparse per tool, since a tool appears on a system only
@@ -133,13 +133,13 @@ A daily self-hosted GitHub Actions workflow
 ([`.github/workflows/update-versions.yml`](./.github/workflows/update-versions.yml))
 runs five idempotent updater scripts, then commits any diff straight to `main`:
 
-| Script                                               | Updates                      | Trust source                                    |
-|------------------------------------------------------|------------------------------|-------------------------------------------------|
-| `scripts/update-versions.py`                         | `versions.nix`               | go.dev JSON's `sha256` field                    |
-| `scripts/update-github-tool.py --tool golangci-lint` | `golangci-lint-versions.nix` | per-release `golangci-lint-<ver>-checksums.txt` |
-| `scripts/update-github-tool.py --tool goreleaser`    | `goreleaser-versions.nix`    | per-release `checksums.txt`                     |
-| `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field       |
-| `scripts/update-github-tool.py --tool doclint`       | `doclint-versions.nix`       | per-release `checksums.txt` (first-party)       |
+| Script                                               | Updates                      | Trust source                                                   |
+|------------------------------------------------------|------------------------------|----------------------------------------------------------------|
+| `scripts/update-versions.py`                         | `versions.nix`               | go.dev JSON's `sha256` field                                   |
+| `scripts/update-github-tool.py --tool golangci-lint` | `golangci-lint-versions.nix` | per-release `golangci-lint-<ver>-checksums.txt`                |
+| `scripts/update-github-tool.py --tool goreleaser`    | `goreleaser-versions.nix`    | per-release `checksums.txt`                                    |
+| `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field                      |
+| `scripts/update-github-tool.py --tool doclint`       | `doclint-versions.nix`       | per-release `checksums.txt` (first-party)                      |
 | `scripts/update-source-tool.py --tool govulncheck`   | `govulncheck-versions.nix`   | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool gopls`         | `gopls-versions.nix`         | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool delve`         | `delve-versions.nix`         | `nix-prefetch-url --unpack` (vendor=null; bundled vendor/)     |
