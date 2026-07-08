@@ -39,23 +39,38 @@ the bundled vendor tree directly.
 
 ### devbox
 
+Add the flake reference directly to your `packages` list in `devbox.json`:
+
 ```json
 {
-  "packages": {
-    "go": "github:openserbia/go-flake#go",
-    "golangci-lint": "github:openserbia/go-flake#golangci-lint",
-    "goreleaser": "github:openserbia/go-flake#goreleaser",
-    "gofumpt": "github:openserbia/go-flake#gofumpt",
-    "doclint": "github:openserbia/go-flake#doclint",
-    "govulncheck": "github:openserbia/go-flake#govulncheck",
-    "gopls": "github:openserbia/go-flake#gopls",
-    "delve": "github:openserbia/go-flake#delve",
-    "staticcheck": "github:openserbia/go-flake#staticcheck"
-  }
+  "packages": [
+    "github:openserbia/go-flake#go",
+    "github:openserbia/go-flake#golangci-lint",
+    "github:openserbia/go-flake#goreleaser",
+    "github:openserbia/go-flake#gofumpt",
+    "github:openserbia/go-flake#doclint",
+    "github:openserbia/go-flake#govulncheck",
+    "github:openserbia/go-flake#gopls",
+    "github:openserbia/go-flake#delve",
+    "github:openserbia/go-flake#staticcheck"
+  ]
 }
 ```
 
-Pin a specific version with `_<major>_<minor>_<patch>`, e.g. `#go_1_26_3`.
+Do not use the `<pkg>@github:...` syntax; Devbox treats flake references as full
+package identifiers. Pin a specific version with `_<major>_<minor>_<patch>`,
+e.g. `#go_1_26_5`.
+
+If you get a "package not found" error when pinning a version, you may need to
+update your flake lock to pull the latest versions from this repository:
+```sh
+devbox update go
+```
+
+To pull the latest daily refresh for a package, run:
+```sh
+devbox update github:openserbia/go-flake#go
+```
 
 ### plain Nix
 
@@ -81,9 +96,9 @@ the `tarball+codeload` URL — same content, served via the codeload CDN:
 
 ```json
 {
-  "packages": {
-    "go": "tarball+https://codeload.github.com/openserbia/go-flake/tar.gz/main#go_1_26_3"
-  }
+  "packages": [
+    "tarball+https://codeload.github.com/openserbia/go-flake/tar.gz/main#go_1_26_5"
+  ]
 }
 ```
 

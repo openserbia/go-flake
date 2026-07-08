@@ -94,7 +94,7 @@
         builtins.foldl' (acc: m: acc // m) {} (builtins.attrValues systemKey)
       );
 
-      # version "1.26.3" -> "<prefix>_1_26_3"
+      # version "1.26.5" -> "<prefix>_1_26_5"
       attrFor = prefix: v: "${prefix}_${builtins.replaceStrings [ "." ] [ "_" ] v}";
 
       # Sole maintainer of this flake; attached to every package's meta.
@@ -591,9 +591,12 @@
         defaultPkg =
           let avail = availableFor goVersions "go"; in
           if avail == [] then {} else { default = mkGo (lib.last (sortAsc avail)); };
+
+        allPkgs = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
       in
       {
-        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
+        packages = allPkgs;
+        legacyPackages = allPkgs;
 
         devShells = lib.optionalAttrs sourceBuiltSupported {
           default = pkgs.mkShell {

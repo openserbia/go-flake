@@ -30,7 +30,7 @@ DEFAULT_MIN_VERSION = "1.2.2"
 
 
 def parse_version(tag: str) -> tuple[int, int, int] | None:
-    """Parse "go1.26.3" -> (1, 26, 3). Returns None for rc/beta or malformed tags."""
+    """Parse "go1.26.5" -> (1, 26, 5). Returns None for rc/beta or malformed tags."""
     if not tag.startswith("go"):
         return None
     rest = tag[2:]
