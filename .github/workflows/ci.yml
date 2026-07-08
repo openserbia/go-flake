@@ -14,6 +14,8 @@ jobs:
     # there's no concern about secrets exposure on fork PRs (none would
     # run here anyway; self-hosted refuses fork-PR triggers).
     runs-on: self-hosted
+    env:
+      NIX_CONFIG: "experimental-features = nix-command flakes"
     defaults:
       run:
         shell: bash -el {0}
@@ -24,23 +26,19 @@ jobs:
       # bytes). Catches hand-edits that break idempotency and any
       # parser/renderer regressions. No network.
       - name: Validate versions.nix
-        run: nix-shell -p python3 --run "./scripts/update-versions.py --validate"
+        run: nix develop --command ./scripts/update-versions.py --validate
 
       - name: Validate binary-mirror data files
         run: |
-          nix-shell -p python3 --run '
-            for t in golangci-lint goreleaser gofumpt; do
-              ./scripts/update-github-tool.py --tool "$t" --validate
-            done
-          '
+          for t in golangci-lint goreleaser gofumpt; do
+            nix develop --command ./scripts/update-github-tool.py --tool "$t" --validate
+          done
 
       - name: Validate source-built data files
         run: |
-          nix-shell -p python3 --run '
-            for t in govulncheck gopls delve staticcheck; do
-              ./scripts/update-source-tool.py --tool "$t" --validate
-            done
-          '
+          for t in govulncheck gopls delve staticcheck; do
+            nix develop --command ./scripts/update-source-tool.py --tool "$t" --validate
+          done
 
       # Flake eval check across every system the flake exposes. Doesn't
       # build anything (--no-build); just walks each derivation and
@@ -52,7 +50,5 @@ jobs:
       # and `nix` lands on PATH — GitHub Actions' default `bash -e` skips
       # profile loading.
       - name: nix flake check
-        shell: bash -el {0}
         run: |
-          nix --extra-experimental-features 'nix-command flakes' \
-            flake check --no-build --no-warn-dirty --all-systems
+          nix flake check --no-build --no-warn-dirty --all-systems

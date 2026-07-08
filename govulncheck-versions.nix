@@ -11,4 +11,12 @@
     src    = "sha256-Xe2H0vF4CNDm1Xw7OD6m5NkqWrFtK/AXzZjqJ5SeoV8=";
     vendor = "sha256-yGaD/jAfT0/YV2ZE8H5++p6CM5qgm+oRtlhgOojX6Zo=";
   };
+  "1.4.0" = {
+    src    = "sha256-XiwWe/BDM9aVf5A5iZFrY57bZ8N+6iCrLL170U9ipVM=";
+    vendor = "sha256-ajTRmrzFf+P2aXN9oVN0oXfxocS22LDPxl2mxY9wGcs=";
+  };
+  "1.5.0" = {
+    src    = "sha256-Bd1YLR0grKXrvvWxDzDG2ZZ1moqY1EA9NyOtp0eBegk=";
+    vendor = "sha256-9daNbbrw0ZVw2aWPkMEGgIA6rhiEkL3OlhYGWUSplQw=";
+  };
 }

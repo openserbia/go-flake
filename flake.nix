@@ -595,11 +595,13 @@
       {
         packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
 
-        devShells.default = pkgs.mkShell {
-          packages = [
-            pkgs.python3
-            latestGo
-          ];
+        devShells = lib.optionalAttrs sourceBuiltSupported {
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.python3
+              latestGo
+            ];
+          };
         };
       });
 }
