@@ -15,4 +15,8 @@
     src    = "sha256-JO3FHKBjAGPPuVvrgdc4RZJreiPHbZp+4RwiZubusVg=";
     vendor = "sha256-mZvjoEgVZ5iNTiduLEC3Oy4RCcxEdVlN6a0Us47IdIQ=";
   };
+  "0.23.0" = {
+    src    = "sha256-GTRZ0tS2a7Cx4qRf6PfxhkGVPYRoLYOmE+W/2x9Pttk=";
+    vendor = "sha256-rvm33C3z3T6moeEQ4C7aG+dT8ROqmpBFehIpwGFZMrU=";
+  };
 }
