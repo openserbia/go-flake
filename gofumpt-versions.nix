@@ -31,4 +31,12 @@
     "linux-arm"    = "4df814eaeeb64aca254d030326a5c293227e35bbd31fd50f442de2507eedecfb";
     "linux-arm64"  = "5d239f93b1ed2dfe74d39b25112bb770a04f6581f986d4b4f5d380521e12ca61";
   };
+  "0.11.0" = {
+    "darwin-amd64" = "b93b3d2c326196af9fb1ce34a5436a18e7b9a73a795bf42e5b6a542eea88d322";
+    "darwin-arm64" = "18936628f195369a80a129c73ee33d23e39086286dab538781ba826effc7e10b";
+    "linux-386"    = "4ea071708b31c0f66ec5e39bed8061a69f0341d1a8bc16b91b7ccd2d86a6d011";
+    "linux-amd64"  = "9f247ec294f5082375c7b062f3ddf48c8212a8711f65a6d75f5129f7fda0d7da";
+    "linux-arm"    = "6beef17d872ef096ba3232f5505e45b166164e834f676ff9c3bfc9a3bccbeeb0";
+    "linux-arm64"  = "9272c2d1738acc1acae33793419e74c69653e70fe56bec4ad9044b12b54715e5";
+  };
 }
