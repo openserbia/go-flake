@@ -10,7 +10,10 @@ permissions:
 
 jobs:
   update:
-    runs-on: self-hosted
+    # Explicit host label: bare `self-hosted` matches ANY runner in the org
+    # pool, including the ARM rpi replicas. Only fires on schedule /
+    # workflow_dispatch — never fork-reachable.
+    runs-on: [self-hosted, ax41]
     env:
       NIX_CONFIG: "experimental-features = nix-command flakes"
     # update-source-tool.py shells out to `nix-prefetch-url` and `nix build`

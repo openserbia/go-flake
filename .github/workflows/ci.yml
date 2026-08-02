@@ -7,20 +7,32 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   validate:
-    # Use the same self-hosted runner as the daily refresh — it already
-    # has Nix configured. Validation is read-only / network-free, so
-    # there's no concern about secrets exposure on fork PRs (none would
-    # run here anyway; self-hosted refuses fork-PR triggers).
-    runs-on: self-hosted
+    # SECURITY: this triggers on `pull_request`, so a PR from ANY fork runs
+    # PR-controlled code (./scripts/*.py, flake.nix) here. It MUST stay on
+    # ephemeral GitHub-hosted ubuntu-latest — NEVER the self-hosted org pool,
+    # which is shared with the rootful production build host. Self-hosted
+    # runners do NOT refuse fork-PR triggers; they run them subject only to the
+    # fork-PR approval gate. Standard runners are free with unlimited minutes on
+    # public repos, so this costs nothing. Validation is read-only / network-
+    # free; Nix is installed per-run by install-nix-action.
+    runs-on: ubuntu-latest
     env:
       NIX_CONFIG: "experimental-features = nix-command flakes"
-    defaults:
-      run:
-        shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342  # v31.11.0
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
       # Pure round-trip check (parse + render must produce identical
       # bytes). Catches hand-edits that break idempotency and any
@@ -45,10 +57,6 @@ jobs:
       # surfaces eval errors. Source-built tools are skipped on
       # x86_64-freebsd at the flake level (upstream buildGoModule
       # infinite-recurses there), which is what lets --all-systems pass.
-      #
-      # `bash -el` is a login shell so /etc/profile.d/nix*.sh gets sourced
-      # and `nix` lands on PATH — GitHub Actions' default `bash -e` skips
-      # profile loading.
       - name: nix flake check
         run: |
           nix flake check --no-build --no-warn-dirty --all-systems
