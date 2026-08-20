@@ -918,4 +918,30 @@
     "netbsd-armv6"   = "f72e8ea58c7acc00086252bca747c0bb965192f89ba195eda4e9de928fdfa7c2";
     "netbsd-armv7"   = "bf4bfc0fb9676f5c8b5e1f6a963bbdc4b9048e37debf4bdb7502cc8cf62cc08f";
   };
+  "2.13.1" = {
+    "darwin-amd64"   = "2c373363953e4e0bee2a03b7fe864a5eb6a3822927cb077d9ca33f2ae3cb2da2";
+    "darwin-arm64"   = "0c9818baf6fb8ad26c6d2ef51b68d5a1e260ef07727036b1431647cc44637c7c";
+    "freebsd-386"    = "a0b8a4a14670ef2092833b4f3b8a420782be2bac43a10b3816adf911c6ce6b6b";
+    "freebsd-amd64"  = "3d3199ff1248ed0f0e52a5577bbb096f109c624e8a7cae6565ff396ac9a8cea2";
+    "freebsd-arm64"  = "3448c2af740b56bdecf312cbec71147460bcd251751420e7d2b3e0e6f26a8a8a";
+    "freebsd-armv6"  = "47d107772916c4f743c1571bb8933c5d70673c3f881c4aa743f112710ef9b862";
+    "freebsd-armv7"  = "eca54e79efb8937d699681538e6330d1b489da3daaa2e85779f3759d31ed7c24";
+    "illumos-amd64"  = "20dc9b811307e24a88ad7a9f475cf587afc1608e8d181c0f822b4d0cd0aac3e3";
+    "linux-386"      = "80e830c29694935bc9480c6bd1c71dbf6dfd52a2240939cfcf05603fca866378";
+    "linux-amd64"    = "b17bfbc9d4aaa48be7f4f1ce3240bc3d8200c870c072bacf15c26219e2cfb9cc";
+    "linux-arm64"    = "908317c23db18448f924e853b3d8a659fd919614cd438f224810a4053daa2607";
+    "linux-armv6"    = "8e3af3190ff3fd9db68c034716b205233066ac666fc7e618a5d52811b2943979";
+    "linux-armv7"    = "1b84d36341daafa1b4ec8c13153cc1d7a9b2a53f8c3bfecdff88ef6c30288d93";
+    "linux-loong64"  = "8ed90a88636f292cb2d3c1b4d2bf44d14a8fd10db94f0650c3e1bef1e68c1974";
+    "linux-mips64"   = "0b6ed3e08e130921e8de10fda15afaad2bdae41511ecae9bfd02d6752cf6ca96";
+    "linux-mips64le" = "9eb98344542c5760208472f10acdbff7c6f586ab3f1a814903e0105017ce0c08";
+    "linux-ppc64le"  = "34477dbe0092a233dcc65fd0c6253c2b573e7b7ae1107f2e0ee535fcd57ad2b5";
+    "linux-riscv64"  = "f33e30be5012f4f90c24856d49c74b9838d239c02f7f957f89178cfa811383aa";
+    "linux-s390x"    = "5816abc37a4227c99fab8b9caeaf60e7b5dd9e06194d63f8d4b317e59ace1579";
+    "netbsd-386"     = "d1c2b8cbf9b622933b84f220c1f153197e7f4772354ac6b94febf0d3342773a6";
+    "netbsd-amd64"   = "490ab6e0f525ce4ca5cbb65d98f428cfb7d235b6065447f2bcc36e147254285a";
+    "netbsd-arm64"   = "97758b8d2795436a5423d5faa8419f3ba2259d62ea1fec737c0b48acc6a6efda";
+    "netbsd-armv6"   = "370a3757a4ef39267062161a77fb406063d4e9c0d54a3200bfbd41cbcd6ae1dd";
+    "netbsd-armv7"   = "847facaaf8f8e30a37348857cec72543124ceda51bfcd0db9ff163ee896744df";
+  };
 }
