@@ -15,4 +15,8 @@
     src    = "sha256-VAiruj8dpN2LnJ8+V4YRpkht0Igl7teakqqickBxiWs=";
     vendor = "sha256-3no4wPqFG0RfSsWB0z8EYxeoZ30t+Zf7ZayzFCLEm2A=";
   };
+  "2026.2.1" = {
+    src    = "sha256-wellofnfLW4lQy68UQyFJfvrKCfrZ/EllLODX1g9taY=";
+    vendor = "sha256-3no4wPqFG0RfSsWB0z8EYxeoZ30t+Zf7ZayzFCLEm2A=";
+  };
 }
