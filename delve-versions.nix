@@ -63,4 +63,8 @@
     src    = "sha256-H91QnLyqywgoc3zdTaclzzUxVPagNnxLzKub2gnL25w=";
     vendor = null;
   };
+  "1.27.2" = {
+    src    = "sha256-vq8RSqSoPmDT/l6izYdM0a6SVJyaIbZ8gsXbgkFPaOw=";
+    vendor = null;
+  };
 }
