@@ -1,0 +1,72 @@
+name: Builder image
+
+# Publishes ghcr.io/openserbia/go-builder, the shared builder stage every
+# openserbia Go service starts its Dockerfile from (see docker/Dockerfile).
+# Runs only on push to main and manual dispatch — never on pull_request —
+# so fork-controlled code can't reach the package-write token. Hosted
+# runners are fine here: the build is a plain docker build with no secrets
+# beyond GITHUB_TOKEN, and it must not share a host with production.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docker/**
+      - .github/workflows/docker.yml
+      # The base warms the flake's newest Go and linters, so a mirrored
+      # upstream release must rebuild it or the warm store goes stale.
+      - versions.nix
+      - golangci-lint-versions.nix
+      - govulncheck-versions.nix
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/openserbia/go-builder
+  # Keep in step with docker/Dockerfile's ARG default. Go is deliberately
+  # not in the tag: the base warms whatever the flake currently mirrors as
+  # newest, and consumers pin Go in their own devbox.lock.
+  DEVBOX_VERSION: "0.17.2"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
+        with:
+          context: docker
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            DEVBOX_VERSION=${{ env.DEVBOX_VERSION }}
+          tags: |
+            ${{ env.IMAGE }}:devbox${{ env.DEVBOX_VERSION }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The digest is what consumers should pin; the tag is for humans.
+      - run: echo "${IMAGE}@${DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}

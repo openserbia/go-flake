@@ -82,6 +82,19 @@ Mirror the same shape as `gofumpt` (bare binary) or `golangci-lint`
 `systemKey.<tool>` table in `flake.nix` listing every nix system the
 upstream publishes for. The same workflow/README steps apply.
 
+## Builder image
+
+`docker/` is a shared Docker builder base, not part of the flake. Its
+`devbox.json` lists only what every consumer service has in common; a
+service-specific package belongs in that service's own `devbox.json`, where
+its `devbox install` layers it on top. Go and the linters are the flake's
+unversioned attributes so nothing here needs a bump when upstream
+releases; the workflow rebuilds on `versions.nix` and the linter data
+files changing. Bumping devbox means the Dockerfile `ARG` default and
+`DEVBOX_VERSION` in the workflow. Don't reintroduce a Go version into the
+tag: consumers pin Go in their own lock and use `latest`. The workflow must stay off `pull_request` triggers: it holds
+`packages: write`.
+
 ## Gotchas
 
 - **`buildGoModule.override { go = ourGo; }` requires passthru attrs on

@@ -128,6 +128,35 @@ the `tarball+codeload` URL — same content, served via the codeload CDN:
 }
 ```
 
+## Builder image
+
+[`docker/Dockerfile`](./docker/Dockerfile) builds
+`ghcr.io/openserbia/go-builder`, a builder-stage base with a pinned devbox
+and a Nix store already holding the toolchain every openserbia service
+shares (Go, go-task, golangci-lint, govulncheck, git, gcc). Services start
+their Dockerfile from it instead of installing devbox and provisioning Nix
+on every build:
+
+```dockerfile
+FROM ghcr.io/openserbia/go-builder:latest AS builder
+COPY devbox.json devbox.lock ./
+RUN devbox install            # near no-op when the lock matches the warm store
+COPY . .
+RUN devbox run -- task build
+```
+
+`latest` is the intended tag for consumers. The base warms the flake's
+newest Go and linters (the unversioned `#go`, `#golangci-lint`,
+`#govulncheck` attributes) and is republished whenever a mirrored upstream
+release lands, so when the services bump their pinned Go the base already
+holds it. A service's own `devbox.lock` still decides what gets built: a
+base holding a different version only costs warm-store hits. The
+`devbox<version>` tag and the digest the publish job prints in its run
+summary exist for anyone who needs a byte-for-byte reproducible builder. The image is
+published by [`.github/workflows/docker.yml`](./.github/workflows/docker.yml)
+on every push to `main` that touches `docker/`, and it is a builder only:
+runtime images stay distroless.
+
 ## Discover available versions
 
 ```sh
