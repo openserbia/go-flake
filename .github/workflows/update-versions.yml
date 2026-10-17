@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  # Dispatches docker.yml after a version bump; see the commit step.
+  actions: write
 
 jobs:
   update:
@@ -26,6 +28,15 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v7
+
+      # The runner image ships devbox but not Nix: Nix is provisioned the
+      # first time a job on that runner runs devbox, and a recreated runner
+      # container starts without it. Every step below calls nix directly, so
+      # a run that landed on a fresh runner failed with "nix: command not
+      # found" (2026-10-10, -11 and -16) and mirrored nothing that day.
+      # Later steps' `bash -el` login shells pick up the new profile.
+      - name: Ensure Nix
+        run: command -v nix >/dev/null || devbox setup nix
 
       - name: Regenerate versions.nix (go)
         run: nix develop --command ./scripts/update-versions.py
@@ -82,3 +93,13 @@ jobs:
           git add $files
           git commit -m "chore: refresh upstream versions"
           git push
+          # A push made with GITHUB_TOKEN never starts another workflow, so
+          # docker.yml's push-path filter on these files never fired for this
+          # job's commits and go-builder stayed at its first build while Go
+          # and the linters moved on. workflow_dispatch is exempt from that
+          # rule. Only the files the builder image warms trigger a rebuild.
+          if ! git diff --quiet HEAD~1 HEAD -- versions.nix golangci-lint-versions.nix govulncheck-versions.nix; then
+            gh workflow run docker.yml --ref main
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
