@@ -6,9 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  # Dispatches docker.yml after a version bump; see the commit step.
-  actions: write
+  contents: read
 
 jobs:
   update:
@@ -16,6 +14,10 @@ jobs:
     # pool, including the ARM rpi replicas. Only fires on schedule /
     # workflow_dispatch — never fork-reachable.
     runs-on: [self-hosted, ax41]
+    permissions:
+      contents: write
+      # Dispatches docker.yml after a version bump; see the commit step.
+      actions: write
     env:
       NIX_CONFIG: "experimental-features = nix-command flakes"
     # update-source-tool.py shells out to `nix-prefetch-url` and `nix build`
@@ -27,7 +29,7 @@ jobs:
       run:
         shell: bash -el {0}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1  # zizmor: ignore[artipacked] job pushes with git
 
       # The runner image ships devbox but not Nix: Nix is provisioned the
       # first time a job on that runner runs devbox, and a recreated runner
