@@ -14,6 +14,7 @@
 | [`goreleaser`](https://goreleaser.com)                 | GitHub releases               | per-release `checksums.txt`        | daily   |
 | [`gofumpt`](https://github.com/mvdan/gofumpt)          | GitHub releases               | per-asset API `digest` field       | daily   |
 | [`doclint`](https://github.com/openserbia/doclint)     | GitHub releases (first-party) | per-release `checksums.txt`        | daily   |
+| [`hugo`](https://gohugo.io) (extended, Linux only)     | GitHub releases               | per-release `hugo_<ver>_checksums.txt` | daily   |
 | [`govulncheck`](https://golang.org/x/vuln)             | GitHub git tags               | source tarball + vendor SHA256     | daily   |
 | [`gopls`](https://pkg.go.dev/golang.org/x/tools/gopls) | GitHub git tags               | source tarball + vendor SHA256     | daily   |
 | [`delve`](https://github.com/go-delve/delve)           | GitHub git tags               | source tarball (vendored)          | daily   |
@@ -49,6 +50,7 @@ Add the flake reference directly to your `packages` list in `devbox.json`:
     "github:openserbia/go-flake#goreleaser",
     "github:openserbia/go-flake#gofumpt",
     "github:openserbia/go-flake#doclint",
+    "github:openserbia/go-flake#hugo",
     "github:openserbia/go-flake#govulncheck",
     "github:openserbia/go-flake#gopls",
     "github:openserbia/go-flake#delve",
@@ -170,6 +172,7 @@ Or browse the data files directly:
 - [`goreleaser-versions.nix`](./goreleaser-versions.nix)
 - [`gofumpt-versions.nix`](./gofumpt-versions.nix)
 - [`doclint-versions.nix`](./doclint-versions.nix) — first-party
+- [`hugo-versions.nix`](./hugo-versions.nix) — extended edition, Linux amd64/arm64
 - [`govulncheck-versions.nix`](./govulncheck-versions.nix)
 - [`gopls-versions.nix`](./gopls-versions.nix)
 - [`delve-versions.nix`](./delve-versions.nix)
@@ -210,6 +213,7 @@ runs five idempotent updater scripts, then commits any diff straight to `main`:
 | `scripts/update-github-tool.py --tool goreleaser`    | `goreleaser-versions.nix`    | per-release `checksums.txt`                                    |
 | `scripts/update-github-tool.py --tool gofumpt`       | `gofumpt-versions.nix`       | GitHub asset API `digest: sha256:…` field                      |
 | `scripts/update-github-tool.py --tool doclint`       | `doclint-versions.nix`       | per-release `checksums.txt` (first-party)                      |
+| `scripts/update-github-tool.py --tool hugo`          | `hugo-versions.nix`          | per-release `hugo_<ver>_checksums.txt`                         |
 | `scripts/update-source-tool.py --tool govulncheck`   | `govulncheck-versions.nix`   | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool gopls`         | `gopls-versions.nix`         | `nix-prefetch-url --unpack` + `buildGoModule` vendor discovery |
 | `scripts/update-source-tool.py --tool delve`         | `delve-versions.nix`         | `nix-prefetch-url --unpack` (vendor=null; bundled vendor/)     |
@@ -241,4 +245,4 @@ change is enough to be back on a clean stdlib or a current linter.
 This flake is MIT. Each mirrored binary is licensed by its upstream project
 (Go: [BSD-3-Clause](https://go.dev/LICENSE); golangci-lint: GPL-3.0-or-later;
 goreleaser: MIT; gofumpt: BSD-3-Clause; govulncheck: BSD-3-Clause;
-doclint: MIT, openserbia first-party).
+doclint: MIT, openserbia first-party; hugo: Apache-2.0).

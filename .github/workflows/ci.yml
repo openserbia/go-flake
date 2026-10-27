@@ -42,7 +42,7 @@ jobs:
 
       - name: Validate binary-mirror data files
         run: |
-          for t in golangci-lint goreleaser gofumpt; do
+          for t in golangci-lint goreleaser gofumpt doclint hugo; do
             nix develop --command ./scripts/update-github-tool.py --tool "$t" --validate
           done
 

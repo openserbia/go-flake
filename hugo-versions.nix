@@ -1,0 +1,66 @@
+{
+  "0.160.0" = {
+    "linux-amd64" = "9f24f829c773d2ddc894cc0dbc70c380a769583f23f6d112841ee8e7fd6f837f";
+    "linux-arm64" = "d4727c25c28b65d7532f29a1b37e325813a712c7450cd51b3b82f6bce46e8c0b";
+  };
+  "0.160.1" = {
+    "linux-amd64" = "133adf4932c1b626b6fe6aa28d56791555abe3ceff167e03be534e8324c9ed39";
+    "linux-arm64" = "be4203d99a5b91446cd89af1e788aeb3c6210cbe78fab380a26be135a3f4ec59";
+  };
+  "0.161.0" = {
+    "linux-amd64" = "39302d32aa5e2eb8a57b016c1638ce994b9dc0c0137b0172c29fc288e3e16557";
+    "linux-arm64" = "404e956fedc9ff5ee4eaee5816269e33c3a308559cd5b684e5707040fb96c9b4";
+  };
+  "0.161.1" = {
+    "linux-amd64" = "9b82cf3211b2321f189a005dd157e6f4bd5c65f2bf5e9eefd2f5e0803c12103c";
+    "linux-arm64" = "e05382fbe2b2b9e51dfd01fbb6cd439d84c83a1862ac92000b25fbf2c06f699c";
+  };
+  "0.162.0" = {
+    "linux-amd64" = "b118d52077bcb301c8d8031f116c04d9dd848e4a5cab572ca10905ea94791216";
+    "linux-arm64" = "183462187e0a16928f76831c3c05266e8174cb6ff010612621c199bc59b3a16e";
+  };
+  "0.162.1" = {
+    "linux-amd64" = "e34160095b6a6406af857fe212f50e4451f67ed1276b9bb0de13d08754980118";
+    "linux-arm64" = "f5531494dd573cfc142779894a9e3e414ab05626d6e0492cc06209dc783aaf39";
+  };
+  "0.163.0" = {
+    "linux-amd64" = "6291775b7d012f9b10fb377ba914e5b1589c0b0d2531b695fa9029be14750111";
+    "linux-arm64" = "ed50d3ec8c5b427013137e38718a5d398a90956ce9e3a8a3cb7ebf3fdd01072b";
+  };
+  "0.163.1" = {
+    "linux-amd64" = "b64ead3135eab66e0fab818b96a63c21c37a068fbb8c2d300627ed51c1217dd7";
+    "linux-arm64" = "6ec4cc914c475ab0091e2b3cddce81442015c6cf2bc784361a5d30ce4701824c";
+  };
+  "0.163.2" = {
+    "linux-amd64" = "a5de14c2accbde27bb9e73d110704e0c816b69f8a081704b4406281c5bf897c2";
+    "linux-arm64" = "6b0d6d72868d287d17d3b8c34c9879a5249c70f39993dd79d66d20eabe8735f7";
+  };
+  "0.163.3" = {
+    "linux-amd64" = "1234302ece1167cef2c252aaa69c89b4f0afc5851f1a30536d693e8e7fc4d1bf";
+    "linux-arm64" = "aa1c95375016b0cfd040f25689da980246ca77a2205f5df9de7e362c93b3d4d4";
+  };
+  "0.164.0" = {
+    "linux-amd64" = "fea17b8c076f950bb2e9f9486667bdaa29422883888d509d63931c73e8a9b3a4";
+    "linux-arm64" = "232d3bc2d1d9510625985ff7c89767598ffea5bc6e5e2882c791313f5a43f723";
+  };
+  "0.165.0" = {
+    "linux-amd64" = "f43494894cdf4a8630a201d5c828051c77f523cc66bb3938b30806835470ac20";
+    "linux-arm64" = "f40ebc44dfda3896cecd3ae7ed44f5c44c4b4a30a2b7d976ece6da62da699a58";
+  };
+  "0.166.0" = {
+    "linux-amd64" = "0e39b901e3f919f1daae05c8ff64f0c14c8a348ef46886d63f8e6d1bb2653885";
+    "linux-arm64" = "4b282afd8181e5ed182f50f293fc24dd6c42bfa569e555d53bfbc5ee6a1b2982";
+  };
+  "0.167.0" = {
+    "linux-amd64" = "0163f5c3deddac1f494a1629ddc40c65d18de9d5794facd98f7f96ac2c7d8957";
+    "linux-arm64" = "c73eaba13738754b50de4d07606670d5c0cd2eaaf2057af657cec9efd3b01876";
+  };
+  "0.168.0" = {
+    "linux-amd64" = "787f100057328824f38c6ad7c87ff10d6451ae0a7bc39cedaad0dd2bcde17e53";
+    "linux-arm64" = "b975ba150a464f57115bdf6cbf6638224906461fdcf863821ec983f8602a442c";
+  };
+  "0.169.0" = {
+    "linux-amd64" = "c41672a0725d307758a132bc94a962e59760eb33f9ba08c991b81f9881d6fa7d";
+    "linux-arm64" = "5b190e5d2836c09efe25cc6249f70bde8a6c5331ef412a4c9137e9d5de89a515";
+  };
+}

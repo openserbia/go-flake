@@ -11,7 +11,7 @@ recipe — don't mix mechanisms.
 
 ### Binary mirror (upstream ships prebuilt binaries)
 
-Used by: `go`, `golangci-lint`, `goreleaser`, `gofumpt`.
+Used by: `go`, `golangci-lint`, `goreleaser`, `gofumpt`, `doclint`, `hugo`.
 
 - Data file: `{version: {os-arch: sha256-hex}}` per platform key.
 - `systemKey.<tool>` in `flake.nix` maps nix systems to the upstream's
@@ -135,6 +135,11 @@ tag: consumers pin Go in their own lock and use `latest`. The workflow must stay
 
 - **`buildGoModule` infinite-recurses on x86_64-freebsd in nixpkgs**.
   Minimal repro: `(import <nixpkgs> { system = "x86_64-freebsd"; }).buildGoModule { vendorHash = null; src = builtins.toFile "x" ""; … }` blows up at eval time. The trace runs through `bmake-filtered-src` → `rsync-3.4.1.buildInputs`. Not our bug; it's upstream nixpkgs' freebsd stdenv setup — tracked at [NixOS/nixpkgs#523290](https://github.com/NixOS/nixpkgs/issues/523290). `flake.nix` defines `sourceBuiltSupported = !pkgs.stdenv.hostPlatform.isFreeBSD` and every source-built tool's pkg set short-circuits to `{}` on freebsd. Binary mirrors (`go`, `golangci-lint`) still work on freebsd because they use `stdenvNoCC.mkDerivation` + `fetchurl`. When the upstream issue closes, re-test by removing the `sourceBuiltSupported` gates and running `nix flake check --all-systems`.
+
+- **hugo is dynamically linked**. Hugo extended is a CGO build (libsass,
+  WebP), so unlike the static Go mirrors it needs glibc + libstdc++.
+  `mkHugo` adds `pkgs.glibc` on top of `mkArchivedTool`; Darwin is absent
+  because upstream only ships a `.pkg` installer there.
 
 - **delve fortify**. `hardeningDisable = [ "fortify" ]` is necessary on
   hardened systems for CGO-based debugging; we skip the additional

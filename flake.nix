@@ -17,6 +17,7 @@
       delveVersions        = import ./delve-versions.nix;
       staticcheckVersions  = import ./staticcheck-versions.nix;
       doclintVersions      = import ./doclint-versions.nix;
+      hugoVersions         = import ./hugo-versions.nix;
 
       # Per-tool: nix `system` -> the upstream platform key in that tool's
       # data file (e.g. "linux-amd64", "linux-armv7"). Sparse — if a system
@@ -87,6 +88,13 @@
           "x86_64-darwin"  = "darwin-amd64";
           "aarch64-darwin" = "darwin-arm64";
         };
+
+        # Hugo publishes extended tarballs for linux amd64/arm64 only;
+        # Darwin gets a universal .pkg installer we don't mirror.
+        hugo = {
+          "x86_64-linux"  = "linux-amd64";
+          "aarch64-linux" = "linux-arm64";
+        };
       };
 
       # Union of nix systems any tool exposes. The flake evaluates over this set.
@@ -136,6 +144,10 @@
       # (underscore between os and arch; systemKey "linux-amd64" -> "linux_amd64").
       doclintUrl = version: key:
         "https://github.com/openserbia/doclint/releases/download/v${version}/doclint_${version}_${builtins.replaceStrings [ "-" ] [ "_" ] key}.tar.gz";
+
+      # Hugo extended archive: hugo_extended_<version>_<os>-<arch>.tar.gz.
+      hugoUrl = version: key:
+        "https://github.com/gohugoio/hugo/releases/download/v${version}/hugo_extended_${version}_${key}.tar.gz";
     in
     flake-utils.lib.eachSystem systems (system:
       let
@@ -350,6 +362,26 @@
             license = lib.licenses.mit;
           };
 
+        # Hugo extended is a CGO build (libsass, WebP), linked against glibc
+        # and libstdc++ rather than static like the other mirrors.
+        # mkArchivedTool already supplies libstdc++; glibc must be added for
+        # autoPatchelf to resolve libc/libm under stdenvNoCC (same as mkGo).
+        mkHugo = version:
+          let k = systemKey.hugo.${system};
+              spec = hugoVersions.${version};
+          in (mkArchivedTool {
+            pname = "hugo";
+            inherit version;
+            url = hugoUrl version k;
+            sha256 = spec.${k};
+            description = "Static site generator, extended edition (upstream binary)";
+            homepage = "https://gohugo.io";
+            changelog = "https://github.com/gohugoio/hugo/releases/tag/v${version}";
+            license = lib.licenses.asl20;
+          }).overrideAttrs (old: {
+            buildInputs = old.buildInputs ++ [ pkgs.glibc ];
+          });
+
         # Latest mirrored Go for this system. Used as the toolchain for
         # source-built tools where pinning to the freshest Go matters
         # (notably gopls — see mkGopls). Falls back to nixpkgs.go if
@@ -541,6 +573,7 @@
         goreleaserPkgs    = toolPackages { tool = "goreleaser"; versions = goreleaserVersions; mkDrv = mkGoreleaser; };
         gofumptPkgs       = toolPackages { tool = "gofumpt"; versions = gofumptVersions; mkDrv = mkGofumpt; };
         doclintPkgs       = toolPackages { tool = "doclint"; versions = doclintVersions; mkDrv = mkDoclint; };
+        hugoPkgs          = toolPackages { tool = "hugo"; versions = hugoVersions; mkDrv = mkHugo; };
 
         # govulncheck doesn't fit toolPackages — its data file is
         # `version -> {src, vendor}` (no per-system platform key) and
@@ -594,7 +627,7 @@
 
       in
       {
-        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
+        packages = goPkgs // golangciLintPkgs // goreleaserPkgs // gofumptPkgs // doclintPkgs // hugoPkgs // govulncheckPkgs // goplsPkgs // delvePkgs // staticcheckPkgs // defaultPkg;
 
         devShells = lib.optionalAttrs sourceBuiltSupported {
           default = pkgs.mkShell {

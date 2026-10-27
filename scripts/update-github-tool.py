@@ -69,6 +69,10 @@ def doclint_checksums(tag: str, ver: str) -> str:
     return f"https://github.com/openserbia/doclint/releases/download/{tag}/checksums.txt"
 
 
+def hugo_checksums(tag: str, ver: str) -> str:
+    return f"https://github.com/gohugoio/hugo/releases/download/{tag}/hugo_{ver}_checksums.txt"
+
+
 TOOLS: dict[str, ToolConfig] = {
     "golangci-lint": ToolConfig(
         repo="golangci/golangci-lint",
@@ -100,6 +104,21 @@ TOOLS: dict[str, ToolConfig] = {
         ),
         mode="checksums",
         checksums_url=doclint_checksums,
+    ),
+    # Hugo extended (libsass/WebP): the variant Hugo sites actually need.
+    # The pattern requires the version right after `extended_`, so the
+    # `extended_withdeploy` and plain (non-extended) builds don't match,
+    # and neither do the legacy `Linux-64bit` alias or Darwin's `.pkg`
+    # (Hugo ships no Darwin tarball, so it's Linux-only here).
+    "hugo": ToolConfig(
+        repo="gohugoio/hugo",
+        min_version="0.160.0",
+        output="hugo-versions.nix",
+        asset_pattern=re.compile(
+            r"^hugo_extended_(?P<ver>[\d.]+)_(?P<os>[a-z]+)-(?P<arch>[a-z0-9]+)\.tar\.gz$"
+        ),
+        mode="checksums",
+        checksums_url=hugo_checksums,
     ),
     "gofumpt": ToolConfig(
         repo="mvdan/gofumpt",
