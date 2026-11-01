@@ -135,7 +135,7 @@ the `tarball+codeload` URL — same content, served via the codeload CDN:
 [`docker/Dockerfile`](./docker/Dockerfile) builds
 `ghcr.io/openserbia/go-builder`, a builder-stage base with a pinned devbox
 and a Nix store already holding the toolchain every openserbia service
-shares (Go, go-task, golangci-lint, govulncheck, git, gcc). Services start
+shares (Go, go-task, golangci-lint, govulncheck). Services start
 their Dockerfile from it instead of installing devbox and provisioning Nix
 on every build:
 

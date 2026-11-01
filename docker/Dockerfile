@@ -19,9 +19,13 @@ FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6ee
 ARG DEVBOX_VERSION=0.17.2
 ARG TARGETARCH
 
-# xz is what the Nix installer unpacks with; the rest is what CGO and the
-# odd Taskfile shell step expect to find.
-RUN apk add --no-cache build-base libffi-dev openssl-dev zlib-dev curl bash git xz ca-certificates
+# xz unpacks the Nix installer. bash and ca-certificates are what that
+# installer and devbox need. git stays the Alpine binary: Taskfiles call
+# it outside the Nix profile, and the nixpkgs git closure pulls Python
+# and Perl. No C toolchain here. Image builds set CGO_ENABLED=0 and ship
+# distroless static; a service that actually compiles C puts gcc in its
+# own devbox.json.
+RUN apk add --no-cache bash ca-certificates curl git xz
 
 # Pinned devbox from GitHub releases, not the launcher script: the launcher
 # resolves "latest" against releases.jetify.com with no retry. Bump the ARG
@@ -42,6 +46,22 @@ RUN curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 \
 # and a mismatch merely costs the download.
 WORKDIR /warm
 COPY devbox.json ./
-RUN devbox install && devbox run -- go version && devbox run -- task --version
+# devbox install realises a stdenv, the upstream tarballs, and a nixpkgs
+# checkout, then leaves the build-only paths in the store. Pin the flake
+# inputs that were actually fetched so the next eval does not re-download
+# nixpkgs, then drop everything the profile does not reference.
+RUN devbox install \
+ && devbox run -- go version \
+ && devbox run -- golangci-lint version \
+ && devbox run -- task --version \
+ && export PATH="/nix/var/nix/profiles/default/bin:$PATH" \
+ && mkdir -p /nix/var/nix/gcroots/warm \
+ && nix --extra-experimental-features 'nix-command flakes' flake archive --json --dry-run /warm/.devbox/gen/flake > /tmp/flake-archive.json \
+ && i=0 \
+ && for p in $(grep -o '/nix/store/[^"]*' /tmp/flake-archive.json); do \
+      if [ -e "$p" ]; then ln -sfn "$p" "/nix/var/nix/gcroots/warm/input-$i"; i=$((i+1)); fi; \
+    done \
+ && nix-collect-garbage -d \
+ && rm -rf /root/.cache /tmp/* /warm/.devbox/.nix-print-dev-env-cache
 
 WORKDIR /app

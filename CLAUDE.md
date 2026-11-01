@@ -87,7 +87,11 @@ upstream publishes for. The same workflow/README steps apply.
 `docker/` is a shared Docker builder base, not part of the flake. Its
 `devbox.json` lists only what every consumer service has in common; a
 service-specific package belongs in that service's own `devbox.json`, where
-its `devbox install` layers it on top. Go and the linters are the flake's
+its `devbox install` layers it on top. gcc and nixpkgs git are not common:
+image builds are `CGO_ENABLED=0`, and Taskfiles call Alpine git. The
+Dockerfile garbage-collects the store after install and pins the nixpkgs
+checkout the eval fetched, so the dead stdenv and upstream tarballs do not
+ship. Go and the linters are the flake's
 unversioned attributes so nothing here needs a bump when upstream
 releases; the workflow rebuilds on `versions.nix` and the linter data
 files changing. Bumping devbox means the Dockerfile `ARG` default and
