@@ -697,4 +697,16 @@
     "linux-ppc64"   = "f3fcbd2b54a2c699de753787e8550bd91c82d3a705df9bf611fa2cfe376635d0";
     "linux-riscv64" = "5306dc26437892a5acfc6c3ecc92b43a0a3dfab55156ce4c8473a5cf17da275c";
   };
+  "2.20.2" = {
+    "darwin-all"    = "cfe608963d9b00656da24bf356c0a067e2e92ce99710be4ac19e418a3a695ec3";
+    "darwin-amd64"  = "58814536817f6ad787607ed7dfc9e774b3f1334dcffc87002ae2a54fd7b5c5c1";
+    "darwin-arm64"  = "4e68482f6bbdb2d3ce7f835be50a4eb7287ee999cefc563c49c5f42ad3778c78";
+    "linux-386"     = "243fa9a298bfe893d7c3d9fb25c1eb819fc57b3968fe5364c727aef9b1afcfb6";
+    "linux-amd64"   = "f3d24969a7389a46613875711d15a96d8f6ef1553d84c6ace09d69ac1e7d44c0";
+    "linux-arm64"   = "f0fa989c3531348e8f975aac647eb187a09046f8a34c54e0b79bed66c84b7f96";
+    "linux-armv7"   = "760f7eec5c332e9c8ef95e8090702e462b2290988cd8c14746cd8eb63b4c8766";
+    "linux-loong64" = "0e128003956b71c2e999093d510950c990ca18407f475799ed0c446a9bfe6f48";
+    "linux-ppc64"   = "40e6d80db621dc92c3422b227fcceb679af5ba8ae094599abbec2d4a7ce2ed2a";
+    "linux-riscv64" = "72928916d670beef71e2e6232627f511abfac08a47673fead8800f8a5c70e84f";
+  };
 }
