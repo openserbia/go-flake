@@ -63,4 +63,8 @@
     "linux-amd64" = "c41672a0725d307758a132bc94a962e59760eb33f9ba08c991b81f9881d6fa7d";
     "linux-arm64" = "5b190e5d2836c09efe25cc6249f70bde8a6c5331ef412a4c9137e9d5de89a515";
   };
+  "0.170.0" = {
+    "linux-amd64" = "0930754ec22ad2dd1a252f8c31a5e57faccc9d15f1c3d381ddafcb96eeb8aef0";
+    "linux-arm64" = "4ec3acd12ac17dbffb34fa453d3630dc0926a2314c8cd4964a550cfa9a4dbc73";
+  };
 }
